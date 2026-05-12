@@ -24,4 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "RPN_calc"
 include(":app")
+include(":logic")
  
