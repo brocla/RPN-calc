@@ -40,6 +40,12 @@ A Reverse Polish Notation (RPN) calculator for Android, styled after the HP-10C 
 - The display holds up to 10 digits plus a sign character.
 - The display font uses the DSEG7 seven-segment style.
 
+### 4.1.1 Digit Grouping
+
+- Digits to the left of the decimal point are grouped in threes with comma separators, HP-41C style (e.g. `1,234,567.89`).
+- Commas are rendered using the zero-width comma glyph in the modified DSEG7 font so they do not consume digit positions.
+- Grouping is applied to the formatted string in the UI layer only; the `:logic` module is unaware of it.
+
 ### 4.2 Display Modes
 
 Four display modes are supported. The active mode persists across sessions.
@@ -369,7 +375,7 @@ Implementation: `ViewModel` with `SavedStateHandle`.
 | Asset | Format | Notes |
 |---|---|---|
 | App launcher icon | Adaptive icon (vector XML foreground + background) | Required by Android |
-| Display font | DSEG7 (.ttf or .otf) | Seven-segment LCD appearance |
+| Display font | DSEG7 (.ttf or .otf) | Seven-segment LCD appearance; modified to include a zero-width comma glyph (U+002C) for digit grouping |
 | Key label font | Roboto Condensed (system) or bundled .ttf | For primary and shifted key labels |
 
 ---
