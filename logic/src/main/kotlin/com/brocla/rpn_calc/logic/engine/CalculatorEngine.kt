@@ -128,7 +128,6 @@ class CalculatorEngine(
 
     fun pressLastX(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
-        val lifted = if (s.stackLiftEnabled) s.stack.lift() else s.stack.lift()
         return s.copy(
             stack = s.stack.lift().withX(s.lastX),
             stackLiftEnabled = true

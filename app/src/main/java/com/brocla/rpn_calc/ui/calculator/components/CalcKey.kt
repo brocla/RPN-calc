@@ -60,7 +60,7 @@ fun CalcKey(
                 interactionSource = interactionSource,
                 indication = null,
             ) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onKey(effectiveEvent)
             },
     ) {

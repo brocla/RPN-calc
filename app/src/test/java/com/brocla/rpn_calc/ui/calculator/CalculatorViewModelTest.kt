@@ -284,6 +284,59 @@ class CalculatorViewModelTest {
     }
 
     // -----------------------------------------------------------------------
+    // Regression: chained subtraction with decimal operands
+    // Sequence: 10 ENTER 0.5 - 0.5 -  =>  expected 9
+    // -----------------------------------------------------------------------
+
+    // Regression: typing decimal-first (.5 instead of 0.5) after an arithmetic result
+    // must still lift the stack. pressDecimal from Idle was not checking stackLiftEnabled.
+    @Test
+    fun subtract_chained_10_enter_dotFive_minus_dotFive_minus_equals_9() {
+        key(CalcKeyEvent.Digit(1))
+        key(CalcKeyEvent.Digit(0))      // 10
+        key(CalcKeyEvent.Enter)
+        key(CalcKeyEvent.Decimal)       // .  (no leading zero — this is the failing path)
+        key(CalcKeyEvent.Digit(5))      // .5
+        key(CalcKeyEvent.Subtract)      // 10 - 0.5 = 9.5
+        key(CalcKeyEvent.Decimal)       // .  (stackLiftEnabled=true but pressDecimal ignored it)
+        key(CalcKeyEvent.Digit(5))      // .5
+        key(CalcKeyEvent.Subtract)      // should be 9.5 - 0.5 = 9, was 0 - 0.5 = -0.5
+        assertEquals(9.0, state.stack.x, 1e-10)
+    }
+
+    @Test
+    fun subtract_chained_10_enter_0point5_minus_0point5_minus_equals_9() {
+        key(CalcKeyEvent.Digit(1))
+        key(CalcKeyEvent.Digit(0))      // 10
+        key(CalcKeyEvent.Enter)
+        key(CalcKeyEvent.Digit(0))
+        key(CalcKeyEvent.Decimal)
+        key(CalcKeyEvent.Digit(5))      // 0.5
+        key(CalcKeyEvent.Subtract)      // 10 - 0.5 = 9.5
+        key(CalcKeyEvent.Digit(0))
+        key(CalcKeyEvent.Decimal)
+        key(CalcKeyEvent.Digit(5))      // 0.5
+        key(CalcKeyEvent.Subtract)      // 9.5 - 0.5 = 9
+        assertEquals(9.0, state.stack.x, 1e-10)
+    }
+
+    // Regression: pressing EEX from Idle after an arithmetic result must lift the stack.
+    // pressEex from Idle was starting exponent entry without checking stackLiftEnabled,
+    // so the result in X was overwritten instead of pushed to Y.
+    // Sequence: 5 ENTER 3 + EEX 2 -  =>  8 on Y, 1e2 (100) on X  =>  expected 8 - 100 = -92
+    @Test
+    fun eex_fromIdle_afterArithmetic_liftsStack() {
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Enter)
+        key(CalcKeyEvent.Digit(3))
+        key(CalcKeyEvent.Add)            // X=8, stackLiftEnabled=true
+        key(CalcKeyEvent.Eex)            // should lift: Y=8, start exponent entry with mantissa 1
+        key(CalcKeyEvent.Digit(2))       // 1e2 = 100
+        key(CalcKeyEvent.Subtract)       // 8 - 100 = -92
+        assertEquals(-92.0, state.stack.x, 1e-10)
+    }
+
+    // -----------------------------------------------------------------------
     // State persistence
     // -----------------------------------------------------------------------
 

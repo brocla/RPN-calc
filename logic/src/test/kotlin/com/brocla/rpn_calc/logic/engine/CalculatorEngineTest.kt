@@ -29,6 +29,21 @@ class CalculatorEngineTest {
 
     // ---- Basic arithmetic sequences ----
 
+    @Test fun subtract_chained_10_enter_0point5_minus_0point5_minus_equals_9() {
+        // Sequence: 10 ENTER 0.5 - 0.5 -  =>  expected X = 9
+        var s = typeNumber(s(), 1, 0)       // 10
+        s = engine.pressEnter(s)
+        s = typeNumber(s, 0)                // 0
+        s = engine.pressDecimal(s)          // 0.
+        s = typeNumber(s, 5)                // 0.5
+        s = engine.pressSubtract(s)         // 10 - 0.5 = 9.5
+        s = typeNumber(s, 0)                // 0
+        s = engine.pressDecimal(s)          // 0.
+        s = typeNumber(s, 5)                // 0.5
+        s = engine.pressSubtract(s)         // 9.5 - 0.5 = 9
+        assertEquals(9.0, s.stack.x)
+    }
+
     @Test fun add_twoNumbers() {
         var s = typeNumber(s(), 2)
         s = engine.pressEnter(s)

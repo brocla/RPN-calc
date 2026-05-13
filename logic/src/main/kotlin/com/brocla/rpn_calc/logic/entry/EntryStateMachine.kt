@@ -40,9 +40,14 @@ class EntryStateMachine {
 
     fun pressDecimal(state: CalculatorState): CalculatorState {
         return when (val es = state.entryState) {
-            is EntryState.Idle -> state.copy(
-                entryState = EntryState.Mantissa("", hasDecimal = true)
-            )
+            is EntryState.Idle -> {
+                val newStack = if (state.stackLiftEnabled) state.stack.lift() else state.stack
+                state.copy(
+                    stack = newStack,
+                    entryState = EntryState.Mantissa("", hasDecimal = true),
+                    stackLiftEnabled = false
+                )
+            }
             is EntryState.Mantissa -> {
                 if (es.hasDecimal) state
                 else state.copy(entryState = es.copy(hasDecimal = true))
@@ -71,16 +76,21 @@ class EntryStateMachine {
                     exponentIsNegative = false
                 )
             )
-            is EntryState.Idle -> state.copy(
-                entryState = EntryState.Exponent(
-                    mantissaIntPart = "1",
-                    mantissaFracPart = "",
-                    mantissaHasDecimal = false,
-                    mantissaIsNegative = false,
-                    exponentDigits = "",
-                    exponentIsNegative = false
+            is EntryState.Idle -> {
+                val newStack = if (state.stackLiftEnabled) state.stack.lift() else state.stack
+                state.copy(
+                    stack = newStack,
+                    stackLiftEnabled = false,
+                    entryState = EntryState.Exponent(
+                        mantissaIntPart = "1",
+                        mantissaFracPart = "",
+                        mantissaHasDecimal = false,
+                        mantissaIsNegative = false,
+                        exponentDigits = "",
+                        exponentIsNegative = false
+                    )
                 )
-            )
+            }
             is EntryState.Exponent -> state  // no-op
         }
     }
