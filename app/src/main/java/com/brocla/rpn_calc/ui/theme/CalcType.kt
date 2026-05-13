@@ -19,7 +19,7 @@ val TimesRomanItalic = FontFamily(Font(R.font.timesi))
  *  caller's base font (set via [Text]'s fontFamily parameter). */
 // Characters that should render in Times Roman Italic:
 //   x, y  — plain lowercase
-//   X, Y  — uppercase (e.g. CLX, X↔Y)
+//   Y     — uppercase (e.g. x↔Y)
 //   ˣ     — U+02E3 modifier letter small x (superscript, e.g. eˣ, 10ˣ, yˣ)
 private val timesChars = setOf('x', 'y', 'Y', 'ˣ')
 

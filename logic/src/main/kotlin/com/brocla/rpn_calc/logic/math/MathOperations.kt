@@ -2,21 +2,24 @@ package com.brocla.rpn_calc.logic.math
 
 import com.brocla.rpn_calc.logic.model.AngleMode
 import com.brocla.rpn_calc.logic.model.CalcResult
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.pow
 
 class MathOperations {
 
-    internal val ERR_DIV_ZERO = "Error: divide by zero"
-    internal val ERR_DOMAIN = "Error: domain"
-    internal val ERR_OVERFLOW = "Error: overflow"
-    internal val ERR_INPUT = "Error: invalid input"
+    companion object {
+        private const val ERR_DIV_ZERO = "Error: divide by zero"
+        private const val ERR_DOMAIN = "Error: domain"
+        private const val ERR_OVERFLOW = "Error: overflow"
+        private const val ERR_INPUT = "Error: invalid input"
+    }
 
     private fun toRadians(x: Double, mode: AngleMode): Double =
-        if (mode == AngleMode.DEG) Math.toRadians(x) else x
+        if (mode == AngleMode.DEG) x * (PI / 180.0) else x
 
     private fun fromRadians(x: Double, mode: AngleMode): Double =
-        if (mode == AngleMode.DEG) Math.toDegrees(x) else x
+        if (mode == AngleMode.DEG) x * (180.0 / PI) else x
 
     private fun safe(block: () -> Double): CalcResult {
         val r = block()
@@ -53,10 +56,7 @@ class MathOperations {
         else -> safe { y.pow(x) }
     }
 
-    fun pow10(x: Double): CalcResult = safe {
-        val r = 10.0.pow(x)
-        if (r.isInfinite()) Double.POSITIVE_INFINITY else r
-    }
+    fun pow10(x: Double): CalcResult = safe { 10.0.pow(x) }
 
     // ---- Logarithms ----
 
@@ -66,10 +66,7 @@ class MathOperations {
     fun ln(x: Double): CalcResult =
         if (x <= 0.0) CalcResult.Err(ERR_DOMAIN) else safe { kotlin.math.ln(x) }
 
-    fun exp(x: Double): CalcResult = safe {
-        val r = kotlin.math.exp(x)
-        if (r.isInfinite()) Double.POSITIVE_INFINITY else r
-    }
+    fun exp(x: Double): CalcResult = safe { kotlin.math.exp(x) }
 
     // ---- Trigonometry ----
 
@@ -164,7 +161,4 @@ class MathOperations {
         return Pair(CalcResult.Value(yCoord), CalcResult.Value(xCoord))
     }
 
-    // ---- Constants ----
-
-    fun pi(): CalcResult = CalcResult.Value(Math.PI)
 }

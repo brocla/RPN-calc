@@ -149,5 +149,5 @@ class MathOperationsTest {
 
     // ---- Constants ----
 
-    @Test fun pi_value() = assertValue(Math.PI, math.pi())
+    @Test fun pi_value() = assertValue(PI, CalcResult.Value(PI))
 }

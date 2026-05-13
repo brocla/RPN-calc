@@ -250,7 +250,6 @@ class CalculatorEngine(
 
     fun pressToPolar(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
-        val x = s.lastX.let { s.stack.x }
         val withLastX = s.copy(lastX = s.stack.x)
         val (newY, newX) = mathOperations.toPolar(s.stack.y, s.stack.x, s.angleMode)
         return if (newY is CalcResult.Value && newX is CalcResult.Value) {
@@ -282,7 +281,7 @@ class CalculatorEngine(
     fun pressPi(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         val committed = commitEntry(s)
-        val newStack = committed.stack.lift().withX(Math.PI)
+        val newStack = committed.stack.lift().withX(kotlin.math.PI)
         return committed.copy(stack = newStack, stackLiftEnabled = true)
     }
 
