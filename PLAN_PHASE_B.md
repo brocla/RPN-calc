@@ -58,8 +58,8 @@ MainActivity  (Hilt entry point, landscape lock, edge-to-edge)
 ### Key data flow
 
 ```
-User tap → CalcKey.onClick → CalculatorScreen.onKey(KeyEvent) →
-CalculatorViewModel.onKey(KeyEvent) → CalculatorEngine.press*(state) →
+User tap → CalcKey.onClick → CalculatorScreen.onKey(CalcKeyEvent) →
+CalculatorViewModel.onKey(CalcKeyEvent) → CalculatorEngine.press*(state) →
 new CalculatorState → StateFlow update → recomposition
 ```
 
@@ -243,25 +243,38 @@ dependencies {
 ```
 Also add `alias(libs.plugins.kotlin.serialization)` to `logic/build.gradle.kts` plugins block.
 
-### Font asset
+### Font assets
 
-The font file is already present at:
-```
-app/src/main/res/font/dseg7classic_bolditalic.ttf
-```
+Three font files are required in `app/src/main/res/font/`:
+
+**`dseg7classic_bolditalic.ttf`** — display font (modified build)
 > **Android resource naming:** Android resource file names must be all-lowercase with no
-> hyphens. The original file `DSEG7Classic-BoldItalic.ttf` was renamed to
-> `dseg7classic_bolditalic.ttf` to satisfy this constraint.
+> hyphens. The original file `DSEG7Classic-BoldItalic.ttf` was renamed accordingly.
 
 This is a **modified** DSEG7 Classic Bold Italic build. A zero-width comma glyph (U+002C,
-advance width = 0) was added via FontForge so that comma thousands-separators can be
-inserted between digit characters without shifting their positions — identical to how the
-built-in period glyph works in the unmodified font. Do not replace this file with the
-upstream DSEG7 release; the upstream fonts contain no comma glyph.
+advance width = 0) was added so that comma thousands-separators can be inserted between
+digit characters without shifting their positions. Do not replace with the upstream DSEG7
+release — the upstream fonts contain no comma glyph.
+
+**`helvetica.ttf`** — primary key label font. Used for all key labels except the characters
+`x`, `y`, `Y`, `ˣ` (U+02E3). See §11.2 of REQUIREMENTS.md.
+
+**`timesi.ttf`** — Times New Roman Italic. Used for the characters `x`, `y`, `Y`, `ˣ` in
+key labels to match HP-1xC styling. See §11.2 of REQUIREMENTS.md.
+
+### App icon
+
+Launcher icons use PNG files (not vector XML) in each mipmap density bucket:
+`ic_launcher.png`, `ic_launcher_background.png`, `ic_launcher_foreground.png`
+in `mipmap-hdpi` through `mipmap-xxxhdpi`.
+
+The `mipmap-anydpi/ic_launcher.xml` adaptive icon XML must reference `@mipmap/` resources,
+not `@drawable/` — the PNG files are in the mipmap tree, not the drawable tree.
 
 ### Acceptance criteria
 - `./gradlew :app:build` succeeds with all new dependencies resolved.
-- Font file present at the above path.
+- All three font files present at the above paths.
+- App icon displays correctly on launcher.
 
 ---
 
@@ -294,24 +307,35 @@ object CalcColors {
 ### `CalcType.kt`
 
 ```kotlin
-val Dseg7 = FontFamily(Font(R.font.dseg7classic_regular))
+val Dseg7         = FontFamily(Font(R.font.dseg7classic_bolditalic))
+val Helvetica     = FontFamily(Font(R.font.helvetica))
+val TimesRomanItalic = FontFamily(Font(R.font.timesi))
 
-val CalcTypography = Typography(
-    // Main display number
-    displayLarge = TextStyle(
-        fontFamily = Dseg7,
-        fontSize = 36.sp,
-        letterSpacing = 2.sp,
-        color = CalcColors.DisplayText
-    ),
-    // Annunciator labels
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 9.sp,
-        letterSpacing = 0.5.sp
-    )
+// Characters rendered in Times Roman Italic (see §11.2 REQUIREMENTS.md):
+//   x, y  — plain lowercase
+//   Y     — uppercase (e.g. x↔Y)
+//   ˣ     — U+02E3 modifier letter small x (superscript, e.g. eˣ, 10ˣ, yˣ)
+private val timesChars = setOf('x', 'y', 'Y', 'ˣ')
+
+// Builds an AnnotatedString mixing Helvetica and Times Italic within a single label.
+fun mixedFontLabel(label: String, timesScale: Float = 1f): AnnotatedString { ... }
+
+val DisplayTextStyle = TextStyle(
+    fontFamily = Dseg7,
+    fontSize = 36.sp,
+    color = CalcColors.DisplayText,
+)
+
+val AnnunciatorTextStyle = TextStyle(
+    fontFamily = Helvetica,
+    fontSize = 9.sp,
 )
 ```
+
+Key label text in `CalcKey` uses `mixedFontLabel()` to produce an `AnnotatedString` that
+renders variable-font characters in Times Italic at the same nominal size as the surrounding
+Helvetica text. The `√x` key uses a `customLabel` composable (`RadicalLabel`) drawn on
+`Canvas` rather than any text glyph.
 
 ### `CalcTheme.kt`
 
@@ -401,7 +425,7 @@ class CalculatorViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(loadState())
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
 
-    fun onKey(event: KeyEvent) { /* see below */ }
+    fun onKey(event: CalcKeyEvent) { /* see below */ }
 
     private fun loadState(): CalculatorUiState { /* deserialize from SavedStateHandle */ }
     private fun saveState(state: CalculatorUiState) { /* serialize to SavedStateHandle */ }
@@ -418,55 +442,55 @@ else → dispatch to CalculatorEngine by event type
 
 After every state change: `saveState(newUiState)`.
 
-**`KeyEvent` sealed class** (defined in `ui/calculator/`):
+**`CalcKeyEvent` sealed class** (defined in `ui/calculator/CalcKeyEvent.kt`):
 
 ```kotlin
-sealed interface KeyEvent {
-    data class Digit(val d: Int) : KeyEvent
-    data object Decimal : KeyEvent
-    data object Enter : KeyEvent
-    data object Chs : KeyEvent
-    data object Eex : KeyEvent
-    data object Backspace : KeyEvent
-    data object Clx : KeyEvent
-    data object RollDown : KeyEvent
-    data object Swap : KeyEvent
-    data object Sto : KeyEvent          // arms pendingOp = Sto
-    data object Rcl : KeyEvent          // arms pendingOp = Rcl
-    data object Add : KeyEvent
-    data object Subtract : KeyEvent
-    data object Multiply : KeyEvent
-    data object Divide : KeyEvent
-    data object Reciprocal : KeyEvent
-    data object Sqrt : KeyEvent
-    data object Square : KeyEvent       // shifted
-    data object Pow10 : KeyEvent
-    data object Log : KeyEvent          // shifted
-    data object Exp : KeyEvent
-    data object Ln : KeyEvent           // shifted
-    data object Power : KeyEvent
-    data object Pi : KeyEvent
-    data object Percent : KeyEvent
-    data object PercentChange : KeyEvent // shifted
-    data object Sin : KeyEvent
-    data object Cos : KeyEvent
-    data object Tan : KeyEvent
-    data object ArcSin : KeyEvent       // shifted
-    data object ArcCos : KeyEvent       // shifted
-    data object ArcTan : KeyEvent       // shifted
-    data object NCr : KeyEvent
-    data object NPr : KeyEvent          // shifted
-    data object Factorial : KeyEvent
-    data object ToPolar : KeyEvent      // shifted
-    data object ToRect : KeyEvent       // shifted
-    data object LastX : KeyEvent        // shifted
-    data object FixArg : KeyEvent       // arms pendingOp = FixArg
-    data object SciArg : KeyEvent       // arms pendingOp = SciArg
-    data object EngArg : KeyEvent       // arms pendingOp = EngArg
-    data object AllMode : KeyEvent      // shifted, immediate
-    data object DegRad : KeyEvent       // shifted
-    data object Shift : KeyEvent
-    data object NoOp : KeyEvent         // ON key, blank keys
+sealed interface CalcKeyEvent {
+    data class Digit(val d: Int) : CalcKeyEvent
+    data object Decimal : CalcKeyEvent
+    data object Enter : CalcKeyEvent
+    data object Chs : CalcKeyEvent
+    data object Eex : CalcKeyEvent
+    data object Backspace : CalcKeyEvent
+    data object Clx : CalcKeyEvent
+    data object RollDown : CalcKeyEvent
+    data object Swap : CalcKeyEvent
+    data object Sto : CalcKeyEvent          // arms pendingOp = Sto
+    data object Rcl : CalcKeyEvent          // arms pendingOp = Rcl
+    data object Add : CalcKeyEvent
+    data object Subtract : CalcKeyEvent
+    data object Multiply : CalcKeyEvent
+    data object Divide : CalcKeyEvent
+    data object Reciprocal : CalcKeyEvent
+    data object Sqrt : CalcKeyEvent
+    data object Square : CalcKeyEvent       // shifted
+    data object Pow10 : CalcKeyEvent
+    data object Log : CalcKeyEvent          // shifted
+    data object Exp : CalcKeyEvent
+    data object Ln : CalcKeyEvent           // shifted
+    data object Power : CalcKeyEvent
+    data object Pi : CalcKeyEvent
+    data object Percent : CalcKeyEvent
+    data object PercentChange : CalcKeyEvent // shifted
+    data object Sin : CalcKeyEvent
+    data object Cos : CalcKeyEvent
+    data object Tan : CalcKeyEvent
+    data object ArcSin : CalcKeyEvent       // shifted
+    data object ArcCos : CalcKeyEvent       // shifted
+    data object ArcTan : CalcKeyEvent       // shifted
+    data object NCr : CalcKeyEvent
+    data object NPr : CalcKeyEvent          // shifted
+    data object Factorial : CalcKeyEvent
+    data object ToPolar : CalcKeyEvent      // shifted
+    data object ToRect : CalcKeyEvent       // shifted
+    data object LastX : CalcKeyEvent        // shifted
+    data object FixArg : CalcKeyEvent       // arms pendingOp = FixArg
+    data object SciArg : CalcKeyEvent       // arms pendingOp = SciArg
+    data object EngArg : CalcKeyEvent       // arms pendingOp = EngArg
+    data object AllMode : CalcKeyEvent      // shifted, immediate
+    data object DegRad : CalcKeyEvent       // shifted
+    data object Shift : CalcKeyEvent
+    data object NoOp : CalcKeyEvent         // ON key, blank keys
 }
 ```
 
@@ -592,17 +616,28 @@ independently unit-testable with standard JVM tests (no Android dependency neede
 ### `KeyDef.kt`
 
 ```kotlin
-data class KeyDef(
+@Stable
+class KeyDef(
     val primaryLabel: String,
     val shiftedLabel: String = "",          // empty = no shifted function
-    val event: KeyEvent,
-    val shiftedEvent: KeyEvent = KeyEvent.NoOp,
+    val event: CalcKeyEvent,
+    val shiftedEvent: CalcKeyEvent = CalcKeyEvent.NoOp,
     val keyColor: Color = CalcColors.KeyTop,
     val labelColor: Color = CalcColors.LabelPrimary,
-    val widthWeight: Float = 1f,            // for ENTER (2f spans 2 rows visually)
-    val heightWeight: Float = 1f,
-)
+    val primaryLabelSize: TextUnit = 26.sp,
+    val primaryLineHeight: TextUnit = TextUnit.Unspecified,
+    val customLabel: (@Composable (color: Color, fontSize: TextUnit) -> Unit)? = null,
+) {
+    // equals/hashCode compare all fields except customLabel (function type — reference equality only)
+    override fun equals(other: Any?): Boolean { ... }
+    override fun hashCode(): Int { ... }
+}
 ```
+
+Note: `data class` is intentionally avoided — `data class` generates `equals`/`hashCode` using
+the `customLabel` lambda, but function types use reference equality, making every `KeyDef` with
+a lambda appear changed on every recomposition. `@Stable class` with hand-written `equals`
+(excluding `customLabel`) gives Compose correct stability guarantees. No `copy()` needed.
 
 ### `CalcKey.kt`
 
@@ -611,21 +646,21 @@ Each key is a `Box` with:
 - Two `Text` labels: shifted label (small, amber, top) + primary label (larger, white, bottom)
 - `indication = null` on `clickable` — we supply our own pressed visual + haptic
 - Pressed state via `interactionSource` → tint key surface with `KeyPressed`
-- Haptic feedback via `LocalHapticFeedback.current.performHapticFeedback(HapticFeedbackType.TextHandleMove)`
+- Haptic feedback via `LocalHapticFeedback.current.performHapticFeedback(HapticFeedbackType.LongPress)`
 
 ```kotlin
 @Composable
 fun CalcKey(
     def: KeyDef,
     shiftActive: Boolean,
-    onKey: (KeyEvent) -> Unit,
+    onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val effectiveEvent = if (shiftActive && def.shiftedEvent != KeyEvent.NoOp)
+    val effectiveEvent = if (shiftActive && def.shiftedEvent != CalcKeyEvent.NoOp)
         def.shiftedEvent else def.event
 
     Box(
@@ -639,7 +674,7 @@ fun CalcKey(
                 interactionSource = interactionSource,
                 indication = null,
             ) {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onKey(effectiveEvent)
             }
     ) {
@@ -713,62 +748,63 @@ BottomHalf = Row {
 
 ```kotlin
 val keyRow1 = listOf(
-    KeyDef("√x",  "x²",    KeyEvent.Sqrt,       KeyEvent.Square),
-    KeyDef("eˣ",  "LN",    KeyEvent.Exp,        KeyEvent.Ln),
-    KeyDef("10ˣ", "LOG",   KeyEvent.Pow10,      KeyEvent.Log),
-    KeyDef("yˣ",  "→P",    KeyEvent.Power,      KeyEvent.ToPolar),
-    KeyDef("1/x", "→R",    KeyEvent.Reciprocal, KeyEvent.ToRect),
-    KeyDef("CHS", "ALL",   KeyEvent.Chs,        KeyEvent.AllMode),
-    KeyDef("7",   "FIX",   KeyEvent.Digit(7),   KeyEvent.FixArg),
-    KeyDef("8",   "SCI",   KeyEvent.Digit(8),   KeyEvent.SciArg),
-    KeyDef("9",   "ENG",   KeyEvent.Digit(9),   KeyEvent.EngArg),
-    KeyDef("÷",   "",      KeyEvent.Divide,     keyColor = CalcColors.KeyArith),
+    KeyDef("√x",  "x²",    CalcKeyEvent.Sqrt,       CalcKeyEvent.Square),
+    KeyDef("eˣ",  "LN",    CalcKeyEvent.Exp,        CalcKeyEvent.Ln),
+    KeyDef("10ˣ", "LOG",   CalcKeyEvent.Pow10,      CalcKeyEvent.Log),
+    KeyDef("yˣ",  "→P",    CalcKeyEvent.Power,      CalcKeyEvent.ToPolar),
+    KeyDef("1/x", "→R",    CalcKeyEvent.Reciprocal, CalcKeyEvent.ToRect),
+    KeyDef("CHS", "ALL",   CalcKeyEvent.Chs,        CalcKeyEvent.AllMode),
+    KeyDef("7",   "FIX",   CalcKeyEvent.Digit(7),   CalcKeyEvent.FixArg),
+    KeyDef("8",   "SCI",   CalcKeyEvent.Digit(8),   CalcKeyEvent.SciArg),
+    KeyDef("9",   "ENG",   CalcKeyEvent.Digit(9),   CalcKeyEvent.EngArg),
+    KeyDef("÷",   "",      CalcKeyEvent.Divide,     keyColor = CalcColors.KeyArith),
 )
 
 val keyRow2 = listOf(
-    KeyDef("n!",  "D/R",   KeyEvent.Factorial,  KeyEvent.DegRad),
-    KeyDef("nCr", "nPr",   KeyEvent.NCr,        KeyEvent.NPr),
-    KeyDef("SIN", "SIN⁻¹", KeyEvent.Sin,        KeyEvent.ArcSin),
-    KeyDef("COS", "COS⁻¹", KeyEvent.Cos,        KeyEvent.ArcCos),
-    KeyDef("TAN", "TAN⁻¹", KeyEvent.Tan,        KeyEvent.ArcTan),
-    KeyDef("EEX", "",      KeyEvent.Eex),
-    KeyDef("4",   "",      KeyEvent.Digit(4)),
-    KeyDef("5",   "",      KeyEvent.Digit(5)),
-    KeyDef("6",   "",      KeyEvent.Digit(6)),
-    KeyDef("×",   "",      KeyEvent.Multiply,   keyColor = CalcColors.KeyArith),
+    KeyDef("n!",  "D/R",   CalcKeyEvent.Factorial,  CalcKeyEvent.DegRad),
+    KeyDef("nCr", "nPr",   CalcKeyEvent.NCr,        CalcKeyEvent.NPr),
+    KeyDef("SIN", "SIN⁻¹", CalcKeyEvent.Sin,        CalcKeyEvent.ArcSin),
+    KeyDef("COS", "COS⁻¹", CalcKeyEvent.Cos,        CalcKeyEvent.ArcCos),
+    KeyDef("TAN", "TAN⁻¹", CalcKeyEvent.Tan,        CalcKeyEvent.ArcTan),
+    KeyDef("EEX", "",      CalcKeyEvent.Eex),
+    KeyDef("4",   "",      CalcKeyEvent.Digit(4)),
+    KeyDef("5",   "",      CalcKeyEvent.Digit(5)),
+    KeyDef("6",   "",      CalcKeyEvent.Digit(6)),
+    KeyDef("×",   "",      CalcKeyEvent.Multiply,   keyColor = CalcColors.KeyArith),
 )
 
 val keyRow3Left = listOf(     // columns 0–4 of row 3
-    KeyDef("%",   "Δ%",    KeyEvent.Percent,    KeyEvent.PercentChange),
-    KeyDef("R↓",  "",      KeyEvent.RollDown),
-    KeyDef("X↔Y", "LstX",  KeyEvent.Swap,       KeyEvent.LastX),
-    KeyDef("←",   "",      KeyEvent.Backspace),
-    KeyDef("CLX", "",      KeyEvent.Clx),
+    KeyDef("%",   "Δ%",    CalcKeyEvent.Percent,    CalcKeyEvent.PercentChange),
+    KeyDef("R↓",  "",      CalcKeyEvent.RollDown),
+    KeyDef("X↔Y", "LstX",  CalcKeyEvent.Swap,       CalcKeyEvent.LastX),
+    KeyDef("←",   "",      CalcKeyEvent.Backspace),
+    KeyDef("CLX", "",      CalcKeyEvent.Clx),
 )
 
-val enterKey = KeyDef("ENTER", "", KeyEvent.Enter, heightWeight = 2f)
+val enterKey = KeyDef("ENTER", "", CalcKeyEvent.Enter)
+// ENTER rendered with Modifier.fillMaxHeight() in the KeyGrid layout — no heightWeight on KeyDef
 
 val keyRow3Right = listOf(    // columns 6–9 of row 3
-    KeyDef("1",   "",      KeyEvent.Digit(1)),
-    KeyDef("2",   "",      KeyEvent.Digit(2)),
-    KeyDef("3",   "",      KeyEvent.Digit(3)),
-    KeyDef("−",   "",      KeyEvent.Subtract,   keyColor = CalcColors.KeyArith),
+    KeyDef("1",   "",      CalcKeyEvent.Digit(1)),
+    KeyDef("2",   "",      CalcKeyEvent.Digit(2)),
+    KeyDef("3",   "",      CalcKeyEvent.Digit(3)),
+    KeyDef("−",   "",      CalcKeyEvent.Subtract,   keyColor = CalcColors.KeyArith),
 )
 
 val keyRow4Left = listOf(     // columns 0–4 of row 4
-    KeyDef("ON",  "",      KeyEvent.NoOp),
-    KeyDef("SHIFT","",     KeyEvent.Shift,      keyColor = CalcColors.KeyShift,
+    KeyDef("ON",  "",      CalcKeyEvent.NoOp),
+    KeyDef("SHIFT","",     CalcKeyEvent.Shift,      keyColor = CalcColors.KeyShift,
                                                   labelColor = CalcColors.LabelShiftKey),
-    KeyDef("",    "",      KeyEvent.NoOp),      // blank column
-    KeyDef("STO", "",      KeyEvent.Sto),
-    KeyDef("RCL", "",      KeyEvent.Rcl),
+    KeyDef("",    "",      CalcKeyEvent.NoOp),      // blank column
+    KeyDef("STO", "",      CalcKeyEvent.Sto),
+    KeyDef("RCL", "",      CalcKeyEvent.Rcl),
 )
 
 val keyRow4Right = listOf(    // columns 6–9 of row 4
-    KeyDef("0",   "",      KeyEvent.Digit(0)),
-    KeyDef(".",   "",      KeyEvent.Decimal),
-    KeyDef("π",   "",      KeyEvent.Pi),
-    KeyDef("+",   "",      KeyEvent.Add,        keyColor = CalcColors.KeyArith),
+    KeyDef("0",   "",      CalcKeyEvent.Digit(0)),
+    KeyDef(".",   "",      CalcKeyEvent.Decimal),
+    KeyDef("π",   "",      CalcKeyEvent.Pi),
+    KeyDef("+",   "",      CalcKeyEvent.Add,        keyColor = CalcColors.KeyArith),
 )
 ```
 
@@ -778,7 +814,7 @@ val keyRow4Right = listOf(    // columns 6–9 of row 4
 @Composable
 fun KeyGrid(
     shiftActive: Boolean,
-    onKey: (KeyEvent) -> Unit,
+    onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize().padding(4.dp)) {
@@ -813,7 +849,7 @@ fun KeyGrid(
 private fun KeyRow(
     keys: List<KeyDef>,
     shiftActive: Boolean,
-    onKey: (KeyEvent) -> Unit,
+    onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth()) {
@@ -822,7 +858,7 @@ private fun KeyRow(
                 def = def,
                 shiftActive = shiftActive,
                 onKey = onKey,
-                modifier = Modifier.weight(def.widthWeight).fillMaxHeight()
+                modifier = Modifier.weight(1f).fillMaxHeight()
             )
         }
     }
@@ -847,7 +883,7 @@ Pure Composable — receives all data and callbacks, holds no ViewModel referenc
 @Composable
 fun CalculatorScreen(
     uiState: CalculatorUiState,
-    onKey: (KeyEvent) -> Unit,
+    onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(

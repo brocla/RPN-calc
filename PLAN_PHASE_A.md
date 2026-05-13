@@ -355,7 +355,11 @@ Note: results use `assertNear` (tolerance 1e-10) for floating-point comparisons.
 
 | Test | Expected |
 |---|---|
-| `pi_value` | Math.PI |
+| `pi_value` | `kotlin.math.PI` (assert `CalcResult.Value(PI)` directly — no `pi()` method exists) |
+
+Note: `MathOperations` does **not** have a `pi()` method. The engine pushes `kotlin.math.PI`
+onto the stack directly in `pressPi`. The test above simply verifies the constant value via
+a `CalcResult.Value` assertion without calling through `MathOperations`.
 
 ### Implement: `MathOperations.kt`
 
@@ -363,9 +367,10 @@ One public method per operation. Private helper `toRadians(x, mode)` /
 `fromRadians(x, mode)` for angle conversion. Overflow is detected by checking
 `result.isInfinite() || result.isNaN()`.
 
-Error message strings are defined as internal constants so tests can reference them if needed,
-but tests should check for `is CalcResult.Err` rather than exact message text, to keep tests
-decoupled from error wording.
+Error message strings are defined as `private const val` in a `companion object` inside
+`MathOperations`. They are not accessible outside the class. Tests must check for
+`is CalcResult.Err` rather than exact message text — this is the correct decoupling.
+Do not make these `internal`; that leaks implementation detail to test code.
 
 ### Acceptance criteria
 All A4 tests green.
@@ -497,16 +502,20 @@ class EntryStateMachine {
 - If `Exponent` and exponent digit count < 2: append digit; 2 digits already: no-op
 - Suppress leading zeros: if digits is "0" or "" and new digit is 0, stay as "0"
 
-**`pressDecimal`**: only valid in `Mantissa` state. If no decimal yet, set `hasDecimal=true`.
-  If already has decimal: no-op. If `Idle`: begin Mantissa with decimal ("0.").
+**`pressDecimal`**: If `Idle`: check `stackLiftEnabled` — if true, lift the stack before
+  starting entry (same behavior as a digit press from Idle). Begin `Mantissa("", hasDecimal=true)`.
+  If `Mantissa` and no decimal yet: set `hasDecimal=true`. If `Mantissa` and already has decimal:
+  no-op. This stack-lift behavior is critical: `.5` entered after an operation must lift X, not
+  overwrite it.
 
 **`pressChs`**:
 - `Mantissa`: toggle `isNegative`
 - `Exponent`: toggle `exponentIsNegative`
 - `Idle`: handled by `CalculatorEngine` (not entry state machine)
 
-**`pressEex`**: only valid from `Mantissa` or `Idle`. Moves to `Exponent` state, carrying
-  current mantissa data. If called from `Idle`, mantissa is treated as "1".
+**`pressEex`**: valid from `Mantissa` or `Idle`. If `Idle`: check `stackLiftEnabled` — if true,
+  lift the stack before starting entry (same behavior as a digit press from Idle). Mantissa is
+  treated as "1". If `Mantissa`: move to `Exponent` state carrying current mantissa data.
 
 **`pressBackspace`**:
 - `Mantissa` with digits: remove last digit. If digits becomes empty and no decimal:
@@ -540,7 +549,8 @@ Base state helper: `val idle = CalculatorState()`
 
 | Test | Initial | Assertion |
 |---|---|---|
-| `decimal_fromIdle` | idle | Mantissa("", hasDecimal=true) |
+| `decimal_fromIdle_noLift` | idle (liftEnabled=false) | Mantissa("", hasDecimal=true), stack.x unchanged |
+| `decimal_fromIdle_withLift` | idle.copy(stackLiftEnabled=true, stack=Stack(x=5.0)) | stack.y=5.0 (lifted), Mantissa("", hasDecimal=true) |
 | `decimal_fromMantissa` | Mantissa("3") | hasDecimal=true |
 | `decimal_twice_noop` | Mantissa("3", hasDecimal=true) | unchanged |
 
@@ -558,7 +568,8 @@ Base state helper: `val idle = CalculatorState()`
 | Test | Initial | Assertion |
 |---|---|---|
 | `eex_fromMantissa` | Mantissa("12", false, false) | Exponent("12", false, false, "", false) |
-| `eex_fromIdle` | idle | Exponent("1", false, false, "", false) |
+| `eex_fromIdle_noLift` | idle (liftEnabled=false) | Exponent("1", false, false, "", false), stack.x unchanged |
+| `eex_fromIdle_withLift` | idle.copy(stackLiftEnabled=true, stack=Stack(x=5.0)) | stack.y=5.0 (lifted), Exponent state |
 
 **pressBackspace**
 
