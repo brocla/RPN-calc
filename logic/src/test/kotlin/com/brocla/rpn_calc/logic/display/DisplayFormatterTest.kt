@@ -73,17 +73,19 @@ class DisplayFormatterTest {
         CalculatorState(entryState = es, displaySettings = DisplaySettings(DisplayMode.Fix(4)))
 
     @Test fun entry_digits() = assertEquals("123", fmt.format(entryState(EntryState.Mantissa("123"))))
-    @Test fun entry_decimal() = assertEquals("12.", fmt.format(entryState(EntryState.Mantissa("12", hasDecimal = true))))
+    @Test fun entry_decimal() = assertEquals("1.2", fmt.format(entryState(EntryState.Mantissa("1", fracDigits = "2", hasDecimal = true))))
+    @Test fun entry_decimal_oneDigit() = assertEquals("1.", fmt.format(entryState(EntryState.Mantissa("1", hasDecimal = true))))
+    @Test fun entry_decimal_multiDigit() = assertEquals("3.14", fmt.format(entryState(EntryState.Mantissa("3", fracDigits = "14", hasDecimal = true))))
     @Test fun entry_negative() = assertEquals("-5", fmt.format(entryState(EntryState.Mantissa("5", isNegative = true))))
     @Test fun entry_empty() = assertEquals("0", fmt.format(entryState(EntryState.Mantissa(""))))
 
     @Test fun entry_exponent() = assertEquals(
         "1.23 E04",
-        fmt.format(entryState(EntryState.Exponent("123", false, false, "04", false)))
+        fmt.format(entryState(EntryState.Exponent("1", "23", false, false, "04", false)))
     )
 
     @Test fun entry_negExp() = assertEquals(
         "1 E-05",
-        fmt.format(entryState(EntryState.Exponent("1", false, false, "5", true)))
+        fmt.format(entryState(EntryState.Exponent("1", "", false, false, "5", true)))
     )
 }

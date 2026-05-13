@@ -22,24 +22,22 @@ class DisplayFormatter {
 
     private fun formatMantissa(es: EntryState.Mantissa): String {
         val sign = if (es.isNegative) "-" else ""
-        val digits = es.digits.ifEmpty { "0" }
-        val decimal = if (es.hasDecimal) "." else ""
-        return "$sign$digits$decimal"
+        val intDisplay = es.digits.ifEmpty { "0" }
+        val str = if (es.hasDecimal) "$intDisplay.${es.fracDigits}" else intDisplay
+        return "$sign$str"
     }
 
     private fun formatExponent(es: EntryState.Exponent): String {
         val mantissaSign = if (es.mantissaIsNegative) "-" else ""
-        val mantissaDigits = es.mantissaDigits.ifEmpty { "1" }
-        val mantissaStr = buildMantissaDisplay(mantissaDigits, es.mantissaHasDecimal)
+        val intPart = es.mantissaIntPart.ifEmpty { "1" }
+        val mantissaStr = if (es.mantissaHasDecimal || es.mantissaFracPart.isNotEmpty()) {
+            "$intPart.${es.mantissaFracPart}"
+        } else {
+            intPart
+        }
         val expSign = if (es.exponentIsNegative) "-" else ""
         val expDigits = es.exponentDigits.padStart(2, '0')
         return "$mantissaSign$mantissaStr E$expSign$expDigits"
-    }
-
-    private fun buildMantissaDisplay(digits: String, hasDecimal: Boolean): String {
-        if (digits.isEmpty()) return "1"
-        return if (digits.length > 1 && !hasDecimal) "${digits[0]}.${digits.substring(1)}"
-        else digits
     }
 
     private fun formatValue(value: Double, mode: DisplayMode): String {

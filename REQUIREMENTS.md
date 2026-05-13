@@ -20,8 +20,14 @@ A Reverse Polish Notation (RPN) calculator for Android, styled after the HP-10C 
 | Gradle | 9.4.1 |
 | Android Gradle Plugin | 9.2.1 |
 | Compose BOM | 2026.02.01 |
+| Hilt | 2.59.2 (minimum; 2.56.x incompatible with AGP 9.x) |
+| KSP | 2.2.10-2.0.2 (version format: `{kotlin}-2.0.{n}`) |
 | JUnit | 4.13.2 |
 | Test framework | JUnit 4 with `kotlin.test` |
+
+**AGP 9.x build constraints:**
+- Do not add `kotlin-android` plugin to `:app` — AGP 9.x bundles Kotlin internally; adding it separately causes a duplicate-extension build failure.
+- Add `android.disallowKotlinSourceSets=false` to `gradle.properties` to allow KSP to register generated source sets under AGP 9.x.
 
 ---
 

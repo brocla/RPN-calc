@@ -437,7 +437,7 @@ class CalculatorEngineTest {
     @Test fun entry_eexFromIdle_gives_1() {
         var s = engine.pressEex(s())
         val es = s.entryState as EntryState.Exponent
-        assertEquals("1", es.mantissaDigits)
+        assertEquals("1", es.mantissaIntPart)
     }
 
     @Test fun entry_eexAfterCommittedNumber() {

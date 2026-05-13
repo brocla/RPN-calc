@@ -13,13 +13,17 @@ class EntryStateMachineTest {
     val esm = EntryStateMachine()
     val idle = CalculatorState()
 
-    private fun mantissa(digits: String, hasDecimal: Boolean = false, isNegative: Boolean = false) =
-        EntryState.Mantissa(digits, hasDecimal, isNegative)
+    private fun mantissa(
+        digits: String,
+        fracDigits: String = "",
+        hasDecimal: Boolean = false,
+        isNegative: Boolean = false
+    ) = EntryState.Mantissa(digits, fracDigits, hasDecimal, isNegative)
 
     private fun exponent(
-        mDigits: String, mDec: Boolean = false, mNeg: Boolean = false,
+        mIntPart: String, mFracPart: String = "", mDec: Boolean = false, mNeg: Boolean = false,
         eDigits: String = "", eNeg: Boolean = false
-    ) = EntryState.Exponent(mDigits, mDec, mNeg, eDigits, eNeg)
+    ) = EntryState.Exponent(mIntPart, mFracPart, mDec, mNeg, eDigits, eNeg)
 
     // ---- pressDigit from Idle ----
 
@@ -71,6 +75,7 @@ class EntryStateMachineTest {
         assertEquals(base.entryState, s.entryState)
     }
 
+
     // ---- pressChs ----
 
     @Test fun chs_mantissa_positive() {
@@ -96,9 +101,10 @@ class EntryStateMachineTest {
     // ---- pressEex ----
 
     @Test fun eex_fromMantissa() {
-        val s = esm.pressEex(idle.copy(entryState = mantissa("12", false, false)))
+        val s = esm.pressEex(idle.copy(entryState = mantissa("12")))
         val es = s.entryState as EntryState.Exponent
-        assertEquals("12", es.mantissaDigits)
+        assertEquals("12", es.mantissaIntPart)
+        assertEquals("", es.mantissaFracPart)
         assertFalse(es.mantissaHasDecimal)
         assertFalse(es.mantissaIsNegative)
         assertEquals("", es.exponentDigits)
@@ -108,7 +114,7 @@ class EntryStateMachineTest {
     @Test fun eex_fromIdle() {
         val s = esm.pressEex(idle)
         val es = s.entryState as EntryState.Exponent
-        assertEquals("1", es.mantissaDigits)
+        assertEquals("1", es.mantissaIntPart)
         assertEquals("", es.exponentDigits)
     }
 
@@ -161,8 +167,7 @@ class EntryStateMachineTest {
     }
 
     @Test fun complete_decimal() {
-        val s = esm.completeEntry(idle.copy(entryState = mantissa("314", hasDecimal = true)))
-        // "314" with decimal → "3.14"
+        val s = esm.completeEntry(idle.copy(entryState = mantissa("3", "14", hasDecimal = true)))
         assertEquals(3.14, s.stack.x, 1e-10)
     }
 
@@ -172,13 +177,14 @@ class EntryStateMachineTest {
     }
 
     @Test fun complete_withExponent() {
-        val s = esm.completeEntry(idle.copy(entryState = exponent("123", true, false, "02", false)))
+        // mantissa 1.23 (intPart="1", fracPart="23") × 10^2 = 123.0
+        val s = esm.completeEntry(idle.copy(entryState = exponent("1", "23", true, false, "02", false)))
         assertEquals(1.23e2, s.stack.x, 1e-10)
     }
 
     @Test fun complete_negativeExponent() {
-        // mantissaDigits="10", hasDecimal=true → 1.0; exp=-03 → 1.0e-3
-        val s = esm.completeEntry(idle.copy(entryState = exponent("10", true, false, "03", true)))
+        // mantissa 1.0 (intPart="1", fracPart="0") × 10^-3 = 0.001
+        val s = esm.completeEntry(idle.copy(entryState = exponent("1", "0", true, false, "03", true)))
         assertEquals(1.0e-3, s.stack.x, 1e-15)
     }
 }

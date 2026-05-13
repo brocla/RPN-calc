@@ -1,5 +1,8 @@
 package com.brocla.rpn_calc.logic.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Stack(
     val x: Double = 0.0,
     val y: Double = 0.0,

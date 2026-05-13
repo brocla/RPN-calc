@@ -166,8 +166,9 @@ app/src/main/
 
 ```toml
 [versions]
-hilt = "2.56.2"
-ksp = "2.2.10-1.0.29"           # matches kotlin = "2.2.10"
+hilt = "2.59.2"                  # 2.56.x incompatible with AGP 9.x BaseExtension API
+hiltNavigationCompose = "1.2.0"
+ksp = "2.2.10-2.0.2"            # KSP version format is {kotlin}-2.0.{n}, NOT {kotlin}-1.0.{n}
 lifecycleViewmodelCompose = "2.9.1"
 lifecycleRuntimeCompose = "2.9.1"
 kotlinxSerializationJson = "1.8.1"
@@ -176,10 +177,12 @@ kotlinxCoroutines = "1.10.2"
 [libraries]
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 
 [plugins]
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
@@ -195,9 +198,16 @@ alias(libs.plugins.kotlin.serialization) apply false
 ```
 
 ### `app/build.gradle.kts` — add plugins and dependencies
+
+> **AGP 9.x note:** Do NOT add `alias(libs.plugins.kotlin.android)` to the app module.
+> AGP 9.x bundles Kotlin support internally; adding the `kotlin-android` plugin separately
+> causes a duplicate-extension error (`Cannot add extension with name 'kotlin'`).
+> Also add `android.disallowKotlinSourceSets=false` to `gradle.properties` to allow
+> KSP to register its generated source sets.
+
 ```kotlin
 plugins {
-    // existing...
+    // existing (android.application only — do NOT add kotlin.android)...
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
@@ -206,13 +216,23 @@ plugins {
 dependencies {
     // existing...
     implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 ```
+
+### `gradle.properties` — add
+```properties
+android.disallowKotlinSourceSets=false
+```
+Required because AGP 9.x disallows KSP from adding Kotlin source sets via the Kotlin DSL
+by default. This flag restores the pre-9.x behaviour; it is marked experimental but is the
+documented workaround from the AGP 9 migration guide.
 
 ### `logic/build.gradle.kts` — add for state serialization
 ```kotlin
@@ -227,8 +247,12 @@ Also add `alias(libs.plugins.kotlin.serialization)` to `logic/build.gradle.kts` 
 
 The font file is already present at:
 ```
-app/src/main/res/font/DSEG7Classic-BoldItalic.ttf
+app/src/main/res/font/dseg7classic_bolditalic.ttf
 ```
+> **Android resource naming:** Android resource file names must be all-lowercase with no
+> hyphens. The original file `DSEG7Classic-BoldItalic.ttf` was renamed to
+> `dseg7classic_bolditalic.ttf` to satisfy this constraint.
+
 This is a **modified** DSEG7 Classic Bold Italic build. A zero-width comma glyph (U+002C,
 advance width = 0) was added via FontForge so that comma thousands-separators can be
 inserted between digit characters without shifting their positions — identical to how the

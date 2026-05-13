@@ -16,12 +16,20 @@ class EntryStateMachine {
                 )
             }
             is EntryState.Mantissa -> {
-                if (es.digits.length >= 10) return state
-                // Suppress leading zeros
-                val newDigits = if ((es.digits == "0" || es.digits.isEmpty()) && digit == 0) es.digits
-                else if (es.digits == "0" && digit != 0) digit.toString()
-                else es.digits + digit.toString()
-                state.copy(entryState = es.copy(digits = newDigits))
+                val totalDigits = es.digits.length + es.fracDigits.length
+                if (totalDigits >= 10) return state
+                if (es.hasDecimal) {
+                    // Append to fractional part
+                    state.copy(entryState = es.copy(fracDigits = es.fracDigits + digit.toString()))
+                } else {
+                    // Append to integer part, suppressing leading zeros
+                    val newDigits = when {
+                        (es.digits == "0" || es.digits.isEmpty()) && digit == 0 -> es.digits
+                        es.digits == "0" && digit != 0 -> digit.toString()
+                        else -> es.digits + digit.toString()
+                    }
+                    state.copy(entryState = es.copy(digits = newDigits))
+                }
             }
             is EntryState.Exponent -> {
                 if (es.exponentDigits.length >= 2) return state
@@ -55,7 +63,8 @@ class EntryStateMachine {
         return when (val es = state.entryState) {
             is EntryState.Mantissa -> state.copy(
                 entryState = EntryState.Exponent(
-                    mantissaDigits = es.digits,
+                    mantissaIntPart = es.digits,
+                    mantissaFracPart = es.fracDigits,
                     mantissaHasDecimal = es.hasDecimal,
                     mantissaIsNegative = es.isNegative,
                     exponentDigits = "",
@@ -64,7 +73,8 @@ class EntryStateMachine {
             )
             is EntryState.Idle -> state.copy(
                 entryState = EntryState.Exponent(
-                    mantissaDigits = "1",
+                    mantissaIntPart = "1",
+                    mantissaFracPart = "",
                     mantissaHasDecimal = false,
                     mantissaIsNegative = false,
                     exponentDigits = "",
@@ -79,8 +89,10 @@ class EntryStateMachine {
         return when (val es = state.entryState) {
             is EntryState.Idle -> state
             is EntryState.Mantissa -> when {
-                es.hasDecimal && es.digits.isEmpty() -> state.copy(entryState = es.copy(hasDecimal = false))
-                es.hasDecimal -> state.copy(entryState = es.copy(hasDecimal = false))
+                es.hasDecimal && es.fracDigits.isNotEmpty() ->
+                    state.copy(entryState = es.copy(fracDigits = es.fracDigits.dropLast(1)))
+                es.hasDecimal ->
+                    state.copy(entryState = es.copy(hasDecimal = false))
                 es.digits.isEmpty() -> state
                 else -> state.copy(entryState = es.copy(digits = es.digits.dropLast(1)))
             }
@@ -88,7 +100,8 @@ class EntryStateMachine {
                 if (es.exponentDigits.isEmpty()) {
                     state.copy(
                         entryState = EntryState.Mantissa(
-                            digits = es.mantissaDigits,
+                            digits = es.mantissaIntPart,
+                            fracDigits = es.mantissaFracPart,
                             hasDecimal = es.mantissaHasDecimal,
                             isNegative = es.mantissaIsNegative
                         )
@@ -123,23 +136,24 @@ class EntryStateMachine {
     }
 
     private fun parseMantissa(es: EntryState.Mantissa): Double {
-        val digits = es.digits.ifEmpty { "0" }
-        val str = if (es.hasDecimal) {
-            // Insert decimal after first digit: "314" with decimal → "3.14"
-            if (digits.length <= 1) "$digits."
-            else "${digits[0]}.${digits.substring(1)}"
-        } else digits
+        val intPart = es.digits.ifEmpty { "0" }
+        val str = if (es.hasDecimal) "$intPart.${es.fracDigits}" else intPart
         val value = str.toDoubleOrNull() ?: 0.0
         return if (es.isNegative) -value else value
     }
 
     private fun parseExponent(es: EntryState.Exponent): Double {
-        val mantissa = parseMantissa(
-            EntryState.Mantissa(es.mantissaDigits, es.mantissaHasDecimal, es.mantissaIsNegative)
-        )
+        val intPart = es.mantissaIntPart.ifEmpty { "1" }
+        val str = if (es.mantissaHasDecimal || es.mantissaFracPart.isNotEmpty()) {
+            "$intPart.${es.mantissaFracPart}"
+        } else {
+            intPart
+        }
+        val mantissa = str.toDoubleOrNull() ?: 1.0
+        val signedMantissa = if (es.mantissaIsNegative) -mantissa else mantissa
         val expStr = es.exponentDigits.ifEmpty { "0" }
         val exp = expStr.toIntOrNull() ?: 0
         val expSigned = if (es.exponentIsNegative) -exp else exp
-        return mantissa * Math.pow(10.0, expSigned.toDouble())
+        return signedMantissa * Math.pow(10.0, expSigned.toDouble())
     }
 }

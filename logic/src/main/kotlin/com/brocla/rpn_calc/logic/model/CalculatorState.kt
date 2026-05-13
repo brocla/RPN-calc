@@ -1,5 +1,8 @@
 package com.brocla.rpn_calc.logic.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class CalculatorState(
     val stack: Stack = Stack(),
     val entryState: EntryState = EntryState.Idle,
