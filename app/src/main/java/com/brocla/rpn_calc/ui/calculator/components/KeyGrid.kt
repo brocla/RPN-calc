@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brocla.rpn_calc.ui.calculator.CalcKeyEvent
 import com.brocla.rpn_calc.ui.theme.CalcColors
+import androidx.compose.ui.text.font.FontWeight
 
 // ---------------------------------------------------------------------------
 // Key definitions — match the layout grid in PLAN_PHASE_B.md
@@ -24,7 +25,15 @@ import com.brocla.rpn_calc.ui.theme.CalcColors
 // primary: √x  eˣ  10ˣ  yˣ  1/x  CHS   7    8    9   ÷
 //
 private val keyRow1 = listOf(
-    KeyDef("√x",  "x²",   CalcKeyEvent.Sqrt,       CalcKeyEvent.Square),
+    KeyDef(
+        primaryLabel = "√x",
+        shiftedLabel = "x²",
+        event        = CalcKeyEvent.Sqrt,
+        shiftedEvent = CalcKeyEvent.Square,
+        customLabel  = { color, fontSize ->
+            RadicalLabel(fontSize = fontSize, color = color, fontWeight = FontWeight.Medium)
+        },
+    ),
     KeyDef("eˣ",  "LN",   CalcKeyEvent.Exp,        CalcKeyEvent.Ln),
     KeyDef("10ˣ", "LOG",  CalcKeyEvent.Pow10,      CalcKeyEvent.Log),
     KeyDef("yˣ",  "→P",   CalcKeyEvent.Power,      CalcKeyEvent.ToPolar),

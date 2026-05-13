@@ -83,8 +83,10 @@ fun CalcKey(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            // Primary label — white, larger, bottom of key
-            if (def.primaryLabel.isNotEmpty()) {
+            // Primary label — custom composable takes priority, otherwise standard Text
+            if (def.customLabel != null) {
+                def.customLabel.invoke(def.labelColor, def.primaryLabelSize)
+            } else if (def.primaryLabel.isNotEmpty()) {
                 Text(
                     text = mixedFontLabel(def.primaryLabel, timesScale = 1.15f),
                     fontFamily = Helvetica,

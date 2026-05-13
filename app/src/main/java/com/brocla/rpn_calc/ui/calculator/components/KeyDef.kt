@@ -1,5 +1,6 @@
 package com.brocla.rpn_calc.ui.calculator.components
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
@@ -15,4 +16,5 @@ data class KeyDef(
     val labelColor: Color = CalcColors.LabelPrimary,
     val primaryLabelSize: TextUnit = 26.sp,
     val primaryLineHeight: TextUnit = TextUnit.Unspecified,
+    val customLabel: (@Composable (color: Color, fontSize: TextUnit) -> Unit)? = null,
 )
