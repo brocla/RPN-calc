@@ -45,5 +45,6 @@ sealed interface CalcKeyEvent {
     data object AllMode        : CalcKeyEvent   // shifted, immediate
     data object DegRad         : CalcKeyEvent   // shifted
     data object Shift          : CalcKeyEvent
-    data object NoOp           : CalcKeyEvent   // ON key, blank keys
+    data object NoOp           : CalcKeyEvent   // blank keys
+    data object OpenLayoutPicker : CalcKeyEvent // LAYOUT key — intercepted by CalculatorRoute
 }

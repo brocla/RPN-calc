@@ -5,11 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,18 +31,20 @@ import com.brocla.rpn_calc.ui.theme.CalcColors
 import com.brocla.rpn_calc.ui.theme.Helvetica
 import com.brocla.rpn_calc.ui.theme.mixedFontLabel
 
+private val ShiftedLabelHeight = 24.dp
+
 @Composable
 fun CalcKey(
     def: KeyDef,
     shiftActive: Boolean,
     onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
+    primaryTopPadding: Dp = 0.dp,
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // When shift is active: use the shifted event if available, otherwise primary
     val effectiveEvent = if (shiftActive && def.shiftedEvent != CalcKeyEvent.NoOp) {
         def.shiftedEvent
     } else {
@@ -51,7 +55,6 @@ fun CalcKey(
     val shape = RoundedCornerShape(4.dp)
 
     Box(
-        contentAlignment = Alignment.Center,
         modifier = modifier
             .padding(2.dp)
             .clip(shape)
@@ -64,26 +67,13 @@ fun CalcKey(
                 onKey(effectiveEvent)
             },
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        // Primary label — drawn first (behind), offset controlled per row via primaryTopPadding
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 2.dp, vertical = 2.dp),
+                .fillMaxSize()
+                .padding(top = primaryTopPadding),
+            contentAlignment = Alignment.Center,
         ) {
-            // Shifted label — amber, small, top of key
-            if (def.shiftedLabel.isNotEmpty()) {
-                Text(
-                    text = mixedFontLabel(def.shiftedLabel, timesScale = 1.15f),
-                    fontFamily = Helvetica,
-                    color = if (shiftActive) CalcColors.LabelShifted.copy(alpha = 1f)
-                            else CalcColors.LabelShifted.copy(alpha = 0.6f),
-                    fontSize = 16.sp,
-                    lineHeight = 18.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            // Primary label — custom composable takes priority, otherwise standard Text
             if (def.customLabel != null) {
                 def.customLabel.invoke(def.labelColor, def.primaryLabelSize)
             } else if (def.primaryLabel.isNotEmpty()) {
@@ -94,6 +84,29 @@ fun CalcKey(
                     fontSize = def.primaryLabelSize,
                     lineHeight = def.primaryLineHeight,
                     fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        // Shifted label — drawn last (on top); no fixed height so descenders aren't clipped
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .align(Alignment.TopCenter)
+                .padding(top = 3.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (def.shiftedLabel.isNotEmpty()) {
+                Text(
+                    text = mixedFontLabel(def.shiftedLabel, timesScale = 1.15f),
+                    fontFamily = Helvetica,
+                    color = if (shiftActive) CalcColors.LabelShifted.copy(alpha = 1f)
+                            else CalcColors.LabelShifted.copy(alpha = 0.6f),
+                    fontSize = 16.sp,
+                    lineHeight = 18.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )

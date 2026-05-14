@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.model.CalculatorState
+import com.brocla.rpn_calc.logic.model.EntryState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,14 +28,19 @@ class CalculatorViewModel @Inject constructor(
         val current = _uiState.value
         val cs = current.calcState
 
-        // Any key press clears the error — but does NOT also execute the key
+        // Any key press clears the error — does NOT also execute the key; no animation
         if (cs.error != null) {
             val cleared = cs.copy(error = null, shiftActive = false)
-            saveAndEmit(current.copy(calcState = cleared, displayString = buildDisplay(cleared)))
+            saveAndEmit(current.copy(
+                calcState      = cleared,
+                displayString  = buildDisplay(cleared),
+                yDisplayString = buildYDisplay(cleared),
+                animationType  = AnimationType.None,
+            ))
             return
         }
 
-        // A digit key while a two-step op is pending resolves the op
+        // A digit key while a two-step op is pending resolves the op; no animation
         if (current.pendingOp != PendingOp.None && event is CalcKeyEvent.Digit) {
             val d = event.d
             val newCs = when (current.pendingOp) {
@@ -46,14 +52,16 @@ class CalculatorViewModel @Inject constructor(
                 PendingOp.None   -> cs
             }
             saveAndEmit(current.copy(
-                calcState    = newCs.copy(shiftActive = false),
-                pendingOp    = PendingOp.None,
-                displayString = buildDisplay(newCs),
+                calcState      = newCs.copy(shiftActive = false),
+                pendingOp      = PendingOp.None,
+                displayString  = buildDisplay(newCs),
+                yDisplayString = buildYDisplay(newCs),
+                animationType  = AnimationType.None,
             ))
             return
         }
 
-        // Any non-digit key while pending cancels the op, then the key executes normally
+        // Any non-digit key while pending cancels the op, then executes normally
         if (current.pendingOp != PendingOp.None) {
             val cancelled = current.copy(pendingOp = PendingOp.None)
             saveAndEmit(dispatch(cancelled, event))
@@ -113,20 +121,42 @@ class CalculatorViewModel @Inject constructor(
             CalcKeyEvent.DegRad        -> engine.pressDegRad(cs)
             CalcKeyEvent.Shift         -> engine.pressShift(cs)
             CalcKeyEvent.NoOp          -> cs
+            CalcKeyEvent.OpenLayoutPicker -> cs
         }
 
-        // Deactivate shift after every key except SHIFT itself
         val finalCs = if (event is CalcKeyEvent.Shift) newCs else newCs.copy(shiftActive = false)
 
+        val animationType = when (event) {
+            CalcKeyEvent.Enter                                              -> AnimationType.Enter
+            CalcKeyEvent.Add, CalcKeyEvent.Subtract,
+            CalcKeyEvent.Multiply, CalcKeyEvent.Divide,
+            CalcKeyEvent.Power, CalcKeyEvent.NCr, CalcKeyEvent.NPr,
+            CalcKeyEvent.RollDown                                           -> AnimationType.BinaryOp
+            CalcKeyEvent.Swap                                               -> AnimationType.Swap
+            else                                                            -> AnimationType.None
+        }
+
         return ui.copy(
-            calcState     = finalCs,
-            pendingOp     = newPendingOp,
-            displayString = buildDisplay(finalCs),
+            calcState      = finalCs,
+            pendingOp      = newPendingOp,
+            displayString  = buildDisplay(finalCs),
+            yDisplayString = buildYDisplay(finalCs),
+            animSeq        = if (animationType != AnimationType.None) ui.animSeq + 1 else ui.animSeq,
+            animationType  = animationType,
         )
     }
 
     private fun buildDisplay(cs: CalculatorState): String =
         insertThousandsCommas(engine.getDisplay(cs))
+
+    private fun buildYDisplay(cs: CalculatorState): String =
+        insertThousandsCommas(engine.getDisplay(
+            cs.copy(
+                stack      = cs.stack.copy(x = cs.stack.y),
+                entryState = EntryState.Idle,
+                error      = null,
+            )
+        ))
 
     private fun loadState(): CalculatorUiState {
         val stored = savedStateHandle.get<String>(STATE_KEY)
@@ -134,13 +164,17 @@ class CalculatorViewModel @Inject constructor(
             try {
                 val calcState = json.decodeFromString<CalculatorState>(stored)
                 return CalculatorUiState(
-                    calcState     = calcState,
-                    displayString = buildDisplay(calcState),
+                    calcState      = calcState,
+                    displayString  = buildDisplay(calcState),
+                    yDisplayString = buildYDisplay(calcState),
                 )
             } catch (_: Exception) { /* fall through to default */ }
         }
         val default = CalculatorState()
-        return CalculatorUiState(displayString = buildDisplay(default))
+        return CalculatorUiState(
+            displayString  = buildDisplay(default),
+            yDisplayString = buildYDisplay(default),
+        )
     }
 
     private fun saveAndEmit(newUi: CalculatorUiState) {

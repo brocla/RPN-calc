@@ -10,7 +10,7 @@ object CalcColors {
     val DisplayOff    = Color(0xFF9AAD80)  // "off" segment ghost
     val KeyTop        = Color(0xFF2A2A2C)  // standard key surface
     val KeyArith      = Color(0xFF323234)  // arithmetic keys (slightly lighter)
-    val KeyShift      = Color(0xFFD06010)  // orange SHIFT key
+    val KeyShift      = Color(0xFFFBD806)  // yellow SHIFT key
     val LabelPrimary  = Color(0xFFEEEEEE)  // white key label
     val LabelShifted  = Color(0xFFD4A017)  // amber shifted label (above key)
     val LabelShiftKey = Color(0xFFFFFFFF)  // white label on orange SHIFT key

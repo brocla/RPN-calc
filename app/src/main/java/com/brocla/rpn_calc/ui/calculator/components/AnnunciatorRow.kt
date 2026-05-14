@@ -42,11 +42,7 @@ fun AnnunciatorRow(
         Spacer(modifier = Modifier.weight(1f))
 
         // Shift latch
-        AnnunciatorLabel(
-            label = "f",
-            active = state.shiftActive,
-            activeColor = CalcColors.KeyShift,
-        )
+        AnnunciatorLabel("SHIFT", state.shiftActive)
     }
 }
 
@@ -59,7 +55,7 @@ private fun AnnunciatorLabel(
     Text(
         text = label,
         style = AnnunciatorTextStyle,
-        color = if (active) activeColor else CalcColors.AnnunciatorOff,
+        color = if (active) activeColor else Color.Transparent,
         modifier = Modifier.padding(horizontal = 3.dp),
     )
 }
