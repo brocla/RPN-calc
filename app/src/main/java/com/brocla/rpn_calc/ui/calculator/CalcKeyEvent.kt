@@ -47,4 +47,6 @@ sealed interface CalcKeyEvent {
     data object Shift          : CalcKeyEvent
     data object NoOp           : CalcKeyEvent   // blank keys
     data object OpenLayoutPicker : CalcKeyEvent // LAYOUT key — intercepted by CalculatorRoute
+    data object ResetRequest   : CalcKeyEvent   // long-press backspace — intercepted by CalculatorRoute
+    data class PasteValue(val value: Double) : CalcKeyEvent
 }

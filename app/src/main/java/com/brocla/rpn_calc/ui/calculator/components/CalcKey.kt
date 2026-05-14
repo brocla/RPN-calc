@@ -2,6 +2,7 @@ package com.brocla.rpn_calc.ui.calculator.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -21,10 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brocla.rpn_calc.ui.calculator.CalcKeyEvent
 import com.brocla.rpn_calc.ui.theme.CalcColors
@@ -40,6 +41,7 @@ fun CalcKey(
     onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
     primaryTopPadding: Dp = 0.dp,
+    onLongPress: (() -> Unit)? = null,
 ) {
     val haptic = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -65,7 +67,17 @@ fun CalcKey(
             ) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onKey(effectiveEvent)
-            },
+            }
+            .then(
+                if (onLongPress != null) {
+                    Modifier.pointerInput(onLongPress) {
+                        detectTapGestures(onLongPress = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onLongPress()
+                        })
+                    }
+                } else Modifier
+            ),
     ) {
         // Primary label — drawn first (behind), offset controlled per row via primaryTopPadding
         Box(

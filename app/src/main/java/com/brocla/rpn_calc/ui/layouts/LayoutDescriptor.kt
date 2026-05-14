@@ -2,12 +2,17 @@ package com.brocla.rpn_calc.ui.layouts
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.brocla.rpn_calc.ui.calculator.CalcKeyEvent
 import com.brocla.rpn_calc.ui.calculator.components.KeyDef
 
 enum class LayoutOrientation { Landscape, Portrait }
 
 sealed interface KeySlot {
-    data class Key(val keyDef: KeyDef, val weight: Float = 1f) : KeySlot
+    data class Key(
+        val keyDef: KeyDef,
+        val weight: Float = 1f,
+        val longPressEvent: CalcKeyEvent = CalcKeyEvent.NoOp,
+    ) : KeySlot
     data class Spacer(val weight: Float) : KeySlot
 }
 

@@ -30,6 +30,8 @@ fun LayoutRenderer(
                                 onKey = onKey,
                                 modifier = Modifier.weight(slot.weight).fillMaxHeight(),
                                 primaryTopPadding = row.primaryTopPadding,
+                                onLongPress = if (slot.longPressEvent != CalcKeyEvent.NoOp)
+                                    { { onKey(slot.longPressEvent) } } else null,
                             )
                         is KeySlot.Spacer ->
                             Spacer(modifier = Modifier.weight(slot.weight))

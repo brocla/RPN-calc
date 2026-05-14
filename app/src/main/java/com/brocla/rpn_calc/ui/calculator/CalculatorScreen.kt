@@ -30,6 +30,7 @@ fun CalculatorScreen(
     activeLayout: LayoutDescriptor,
     onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
+    onDisplayLongPress: () -> Unit = {},
 ) {
     val isPortrait = activeLayout.orientation == LayoutOrientation.Portrait
     val displayWeight = if (isPortrait) 0.20f else 0.28f
@@ -45,13 +46,15 @@ fun CalculatorScreen(
     ) {
         if (isPortrait) {
             PortraitDisplayPanel(
-                uiState  = uiState,
-                modifier = Modifier.fillMaxWidth().weight(displayWeight),
+                uiState     = uiState,
+                modifier    = Modifier.fillMaxWidth().weight(displayWeight),
+                onLongPress = onDisplayLongPress,
             )
         } else {
             DisplayPanel(
-                uiState  = uiState,
-                modifier = Modifier.fillMaxWidth().weight(displayWeight),
+                uiState     = uiState,
+                modifier    = Modifier.fillMaxWidth().weight(displayWeight),
+                onLongPress = onDisplayLongPress,
             )
         }
         Spacer(modifier = Modifier.height(6.dp))

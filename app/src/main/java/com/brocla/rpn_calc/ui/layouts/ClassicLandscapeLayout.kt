@@ -60,7 +60,7 @@ private val row3 = KeyRow(listOf(
     KeySlot.Key(KeyDef("%",    "Δ%",     CalcKeyEvent.Percent,   CalcKeyEvent.PercentChange)),
     KeySlot.Key(KeyDef("R↓",  "",       CalcKeyEvent.RollDown)),
     KeySlot.Key(KeyDef("x↔y", "LAST x", CalcKeyEvent.Swap,      CalcKeyEvent.LastX)),
-    KeySlot.Key(KeyDef("←",   "",       CalcKeyEvent.Backspace)),
+    KeySlot.Key(KeyDef("←",   "",       CalcKeyEvent.Backspace), longPressEvent = CalcKeyEvent.ResetRequest),
     KeySlot.Key(KeyDef("CLx", "",       CalcKeyEvent.Clx)),
     KeySlot.Key(KeyDef("ENTER", "",     CalcKeyEvent.Enter,     primaryLabelSize = 18.sp)),
     KeySlot.Key(KeyDef("1",   "",       CalcKeyEvent.Digit(1))),

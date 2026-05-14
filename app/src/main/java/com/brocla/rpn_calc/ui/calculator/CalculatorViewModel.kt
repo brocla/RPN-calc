@@ -1,28 +1,43 @@
 package com.brocla.rpn_calc.ui.calculator
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.brocla.rpn_calc.data.CalcStateRepository
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
+import com.brocla.rpn_calc.logic.model.AngleMode
 import com.brocla.rpn_calc.logic.model.CalculatorState
+import com.brocla.rpn_calc.logic.model.DisplayMode
+import com.brocla.rpn_calc.logic.model.DisplaySettings
 import com.brocla.rpn_calc.logic.model.EntryState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @HiltViewModel
 class CalculatorViewModel @Inject constructor(
     private val engine: CalculatorEngine,
-    private val savedStateHandle: SavedStateHandle,
+    private val repository: CalcStateRepository,
+    private val clipboardParser: ClipboardParser,
 ) : ViewModel() {
 
-    private val json = Json { ignoreUnknownKeys = true }
-
-    private val _uiState = MutableStateFlow(loadState())
+    private val _uiState = MutableStateFlow(defaultUiState())
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
+
+    init {
+        val saved = runBlocking { repository.calcState.first() }
+        if (saved != null) {
+            _uiState.value = CalculatorUiState(
+                calcState      = saved,
+                displayString  = buildDisplay(saved),
+                yDisplayString = buildYDisplay(saved),
+            )
+        }
+    }
 
     fun onKey(event: CalcKeyEvent) {
         val current = _uiState.value
@@ -69,6 +84,30 @@ class CalculatorViewModel @Inject constructor(
         }
 
         saveAndEmit(dispatch(current, event))
+    }
+
+    fun reset() {
+        val default = CalculatorState(
+            displaySettings = DisplaySettings(mode = DisplayMode.All),
+            angleMode       = AngleMode.DEG,
+        )
+        _uiState.value = CalculatorUiState(
+            calcState      = default,
+            displayString  = buildDisplay(default),
+            yDisplayString = buildYDisplay(default),
+        )
+        viewModelScope.launch { repository.clear() }
+    }
+
+    fun pasteFromClipboard(raw: String) {
+        when (val result = clipboardParser.parse(raw)) {
+            is ClipboardParser.Result.Success ->
+                onKey(CalcKeyEvent.PasteValue(result.value))
+            ClipboardParser.Result.Invalid ->
+                saveAndEmit(_uiState.value.copy(
+                    calcState = _uiState.value.calcState.copy(error = "Paste: invalid input"),
+                ))
+        }
     }
 
     private fun dispatch(ui: CalculatorUiState, event: CalcKeyEvent): CalculatorUiState {
@@ -122,6 +161,14 @@ class CalculatorViewModel @Inject constructor(
             CalcKeyEvent.Shift         -> engine.pressShift(cs)
             CalcKeyEvent.NoOp          -> cs
             CalcKeyEvent.OpenLayoutPicker -> cs
+            CalcKeyEvent.ResetRequest  -> cs
+            is CalcKeyEvent.PasteValue -> {
+                val entered = engine.pressEnter(cs)
+                entered.copy(
+                    stack = entered.stack.copy(x = event.value),
+                    stackLiftEnabled = true,
+                )
+            }
         }
 
         val finalCs = if (event is CalcKeyEvent.Shift) newCs else newCs.copy(shiftActive = false)
@@ -158,18 +205,7 @@ class CalculatorViewModel @Inject constructor(
             )
         ))
 
-    private fun loadState(): CalculatorUiState {
-        val stored = savedStateHandle.get<String>(STATE_KEY)
-        if (stored != null) {
-            try {
-                val calcState = json.decodeFromString<CalculatorState>(stored)
-                return CalculatorUiState(
-                    calcState      = calcState,
-                    displayString  = buildDisplay(calcState),
-                    yDisplayString = buildYDisplay(calcState),
-                )
-            } catch (_: Exception) { /* fall through to default */ }
-        }
+    private fun defaultUiState(): CalculatorUiState {
         val default = CalculatorState()
         return CalculatorUiState(
             displayString  = buildDisplay(default),
@@ -178,11 +214,7 @@ class CalculatorViewModel @Inject constructor(
     }
 
     private fun saveAndEmit(newUi: CalculatorUiState) {
-        savedStateHandle[STATE_KEY] = json.encodeToString(newUi.calcState)
+        viewModelScope.launch { repository.save(newUi.calcState) }
         _uiState.value = newUi
-    }
-
-    companion object {
-        private const val STATE_KEY = "calculator_state"
     }
 }

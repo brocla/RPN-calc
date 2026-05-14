@@ -1,25 +1,53 @@
 package com.brocla.rpn_calc.ui.calculator
 
-import androidx.lifecycle.SavedStateHandle
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.brocla.rpn_calc.data.CalcStateRepository
 import com.brocla.rpn_calc.logic.display.DisplayFormatter
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.entry.EntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.logic.model.DisplayMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CalculatorViewModelTest {
+
+    @get:Rule
+    val tmpFolder = TemporaryFolder()
 
     private lateinit var vm: CalculatorViewModel
 
+    private fun testRepository(): CalcStateRepository {
+        val dataStore = PreferenceDataStoreFactory.create(
+            produceFile = { tmpFolder.newFile("test.preferences_pb") },
+        )
+        return CalcStateRepository(dataStore, EntryStateMachine())
+    }
+
     @Before
     fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val engine = CalculatorEngine(EntryStateMachine(), MathOperations(), DisplayFormatter())
-        vm = CalculatorViewModel(engine, SavedStateHandle())
+        vm = CalculatorViewModel(engine, testRepository(), ClipboardParserImpl())
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     private fun key(event: CalcKeyEvent) = vm.onKey(event)
@@ -48,13 +76,12 @@ class CalculatorViewModelTest {
 
     @Test
     fun sto_nonDigitCancels() {
-        // Enter two numbers, then STO + non-digit
         key(CalcKeyEvent.Digit(3))
         key(CalcKeyEvent.Enter)
         key(CalcKeyEvent.Digit(4))
         key(CalcKeyEvent.Sto)
         assertEquals(PendingOp.Sto, pending)
-        key(CalcKeyEvent.Add)      // cancels STO and executes Add
+        key(CalcKeyEvent.Add)
         assertEquals(PendingOp.None, pending)
         assertEquals(7.0, state.stack.x)
     }
@@ -65,7 +92,7 @@ class CalculatorViewModelTest {
         key(CalcKeyEvent.Enter)
         key(CalcKeyEvent.Digit(3))
         key(CalcKeyEvent.Sto)
-        key(CalcKeyEvent.Add)      // cancels STO then Add executes: 5+3=8
+        key(CalcKeyEvent.Add)
         assertEquals(8.0, state.stack.x)
     }
 
@@ -75,12 +102,10 @@ class CalculatorViewModelTest {
 
     @Test
     fun rcl_digitRecalls() {
-        // First store a value
         key(CalcKeyEvent.Digit(9))
         key(CalcKeyEvent.Digit(9))
         key(CalcKeyEvent.Sto)
         key(CalcKeyEvent.Digit(2))
-        // Now recall it
         key(CalcKeyEvent.Clx)
         key(CalcKeyEvent.Rcl)
         key(CalcKeyEvent.Digit(2))
@@ -91,7 +116,7 @@ class CalculatorViewModelTest {
     @Test
     fun rcl_nonDigitCancels() {
         key(CalcKeyEvent.Rcl)
-        key(CalcKeyEvent.Add)   // cancels RCL, Add runs normally
+        key(CalcKeyEvent.Add)
         assertEquals(PendingOp.None, pending)
     }
 
@@ -115,7 +140,7 @@ class CalculatorViewModelTest {
         val modeBefore = state.displaySettings.mode
         key(CalcKeyEvent.Shift)
         key(CalcKeyEvent.FixArg)
-        key(CalcKeyEvent.Add)   // cancels FixArg, Add runs normally
+        key(CalcKeyEvent.Add)
         assertEquals(PendingOp.None, pending)
         assertEquals(modeBefore, state.displaySettings.mode)
     }
@@ -152,7 +177,6 @@ class CalculatorViewModelTest {
 
     @Test
     fun shift_againKeepsLatchActive() {
-        // HP spec §11.1: second SHIFT does not toggle off
         key(CalcKeyEvent.Shift)
         key(CalcKeyEvent.Shift)
         assertTrue(state.shiftActive)
@@ -169,7 +193,7 @@ class CalculatorViewModelTest {
     fun shift_clearedAfterShiftedFunction() {
         key(CalcKeyEvent.Digit(4))
         key(CalcKeyEvent.Shift)
-        key(CalcKeyEvent.Square)  // shifted √x → x²
+        key(CalcKeyEvent.Square)
         assertTrue(!state.shiftActive)
         assertEquals(16.0, state.stack.x)
     }
@@ -196,18 +220,15 @@ class CalculatorViewModelTest {
 
     @Test
     fun error_firstKeyAfterErrorDoesNotExecute() {
-        // Set up: 5 on stack, force error
         key(CalcKeyEvent.Digit(5))
         key(CalcKeyEvent.Enter)
         key(CalcKeyEvent.Digit(0))
-        key(CalcKeyEvent.Reciprocal)     // error: 1/0
+        key(CalcKeyEvent.Reciprocal)
         assertTrue(state.error != null)
-        val xBeforeClear = 0.0           // engine sets X to 0.0 on error
-        key(CalcKeyEvent.Add)            // first key: clears error only
+        val xBeforeClear = 0.0
+        key(CalcKeyEvent.Add)
         assertNull(state.error)
-        // Add did NOT execute: X is still 0.0, Y is still 5.0
         assertEquals(xBeforeClear, state.stack.x)
-        // Now Add executes: 5 + 0 = 5
         key(CalcKeyEvent.Add)
         assertEquals(5.0, state.stack.x)
     }
@@ -219,7 +240,7 @@ class CalculatorViewModelTest {
     @Test
     fun displayString_hasCommasForLargeValues() {
         key(CalcKeyEvent.Digit(1))
-        repeat(6) { key(CalcKeyEvent.Digit(0)) }   // enters 1000000
+        repeat(6) { key(CalcKeyEvent.Digit(0)) }
         key(CalcKeyEvent.Enter)
         assertTrue(display.contains(","), "Expected commas in '$display'")
     }
@@ -236,36 +257,23 @@ class CalculatorViewModelTest {
     }
 
     // -----------------------------------------------------------------------
-    // Regression: decimal key (issue 2)
-    // Bug: formatMantissa appended the decimal at the END of the digit string
-    // instead of inserting it after the first digit (to match parseMantissa).
-    // Typing 3 · 1 4 produced "314." on the display instead of "3.14".
+    // Regression: decimal key
     // -----------------------------------------------------------------------
 
     @Test
     fun decimal_digitsAfterDecimalAppearRightOfDecimalPoint() {
-        // Regression: decimal position is where the key was pressed, not always after first digit.
-        // Old bug: formatMantissa packed all digits into one string and always placed the decimal
-        // after the first digit, so "3" "1" "." "4" showed "3.14" (correct accident) but
-        // "3" "1" "." "4" typed as integer-then-decimal showed wrong position.
-        // The real scenario: type decimal AFTER multiple digits.
         key(CalcKeyEvent.Digit(3))
         assertEquals("3", display)
-
         key(CalcKeyEvent.Digit(1))
         assertEquals("31", display)
-
         key(CalcKeyEvent.Decimal)
         assertEquals("31.", display)
-
         key(CalcKeyEvent.Digit(4))
-        // Before the fix: display was "3.14" (decimal forced to after first digit)
         assertEquals("31.4", display)
     }
 
     @Test
     fun decimal_digitsBeforeDecimalAccumulateNormally() {
-        // Decimal pressed first, then digits — straightforward case.
         key(CalcKeyEvent.Digit(3))
         key(CalcKeyEvent.Decimal)
         key(CalcKeyEvent.Digit(1))
@@ -285,88 +293,124 @@ class CalculatorViewModelTest {
 
     // -----------------------------------------------------------------------
     // Regression: chained subtraction with decimal operands
-    // Sequence: 10 ENTER 0.5 - 0.5 -  =>  expected 9
     // -----------------------------------------------------------------------
 
-    // Regression: typing decimal-first (.5 instead of 0.5) after an arithmetic result
-    // must still lift the stack. pressDecimal from Idle was not checking stackLiftEnabled.
     @Test
     fun subtract_chained_10_enter_dotFive_minus_dotFive_minus_equals_9() {
         key(CalcKeyEvent.Digit(1))
-        key(CalcKeyEvent.Digit(0))      // 10
+        key(CalcKeyEvent.Digit(0))
         key(CalcKeyEvent.Enter)
-        key(CalcKeyEvent.Decimal)       // .  (no leading zero — this is the failing path)
-        key(CalcKeyEvent.Digit(5))      // .5
-        key(CalcKeyEvent.Subtract)      // 10 - 0.5 = 9.5
-        key(CalcKeyEvent.Decimal)       // .  (stackLiftEnabled=true but pressDecimal ignored it)
-        key(CalcKeyEvent.Digit(5))      // .5
-        key(CalcKeyEvent.Subtract)      // should be 9.5 - 0.5 = 9, was 0 - 0.5 = -0.5
+        key(CalcKeyEvent.Decimal)
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Subtract)
+        key(CalcKeyEvent.Decimal)
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Subtract)
         assertEquals(9.0, state.stack.x, 1e-10)
     }
 
     @Test
     fun subtract_chained_10_enter_0point5_minus_0point5_minus_equals_9() {
         key(CalcKeyEvent.Digit(1))
-        key(CalcKeyEvent.Digit(0))      // 10
+        key(CalcKeyEvent.Digit(0))
         key(CalcKeyEvent.Enter)
         key(CalcKeyEvent.Digit(0))
         key(CalcKeyEvent.Decimal)
-        key(CalcKeyEvent.Digit(5))      // 0.5
-        key(CalcKeyEvent.Subtract)      // 10 - 0.5 = 9.5
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Subtract)
         key(CalcKeyEvent.Digit(0))
         key(CalcKeyEvent.Decimal)
-        key(CalcKeyEvent.Digit(5))      // 0.5
-        key(CalcKeyEvent.Subtract)      // 9.5 - 0.5 = 9
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Subtract)
         assertEquals(9.0, state.stack.x, 1e-10)
     }
 
-    // Regression: pressing EEX from Idle after an arithmetic result must lift the stack.
-    // pressEex from Idle was starting exponent entry without checking stackLiftEnabled,
-    // so the result in X was overwritten instead of pushed to Y.
-    // Sequence: 5 ENTER 3 + EEX 2 -  =>  8 on Y, 1e2 (100) on X  =>  expected 8 - 100 = -92
     @Test
     fun eex_fromIdle_afterArithmetic_liftsStack() {
         key(CalcKeyEvent.Digit(5))
         key(CalcKeyEvent.Enter)
         key(CalcKeyEvent.Digit(3))
-        key(CalcKeyEvent.Add)            // X=8, stackLiftEnabled=true
-        key(CalcKeyEvent.Eex)            // should lift: Y=8, start exponent entry with mantissa 1
-        key(CalcKeyEvent.Digit(2))       // 1e2 = 100
-        key(CalcKeyEvent.Subtract)       // 8 - 100 = -92
+        key(CalcKeyEvent.Add)
+        key(CalcKeyEvent.Eex)
+        key(CalcKeyEvent.Digit(2))
+        key(CalcKeyEvent.Subtract)
         assertEquals(-92.0, state.stack.x, 1e-10)
     }
 
     // -----------------------------------------------------------------------
-    // State persistence
+    // Reset
     // -----------------------------------------------------------------------
 
     @Test
-    fun persistence_stateRoundTrips() {
-        // Set up a non-default state
-        key(CalcKeyEvent.Digit(7))
+    fun reset_clearsStack() {
+        key(CalcKeyEvent.Digit(5))
         key(CalcKeyEvent.Enter)
         key(CalcKeyEvent.Digit(3))
-        key(CalcKeyEvent.Shift)
-        key(CalcKeyEvent.SciArg)
+        vm.reset()
+        assertEquals(0.0, state.stack.x)
+        assertEquals(0.0, state.stack.y)
+        assertEquals(0.0, state.stack.z)
+        assertEquals(0.0, state.stack.t)
+    }
+
+    @Test
+    fun reset_clearsMemory() {
+        key(CalcKeyEvent.Digit(7))
+        key(CalcKeyEvent.Sto)
         key(CalcKeyEvent.Digit(2))
+        vm.reset()
+        assertEquals(0.0, state.memory[2])
+    }
+
+    @Test
+    fun reset_clearsDisplayMode() {
         key(CalcKeyEvent.Shift)
-        key(CalcKeyEvent.DegRad)   // switch to RAD
+        key(CalcKeyEvent.FixArg)
+        key(CalcKeyEvent.Digit(4))
+        vm.reset()
+        assertTrue(state.displaySettings.mode is DisplayMode.All)
+    }
 
-        val savedHandle = vm.uiState.value.let {
-            // Grab the saved state handle by reconstructing with same handle
-            SavedStateHandle(mapOf("calculator_state" to
-                kotlinx.serialization.json.Json.encodeToString(
-                    com.brocla.rpn_calc.logic.model.CalculatorState.serializer(),
-                    it.calcState
-                )
-            ))
-        }
+    @Test
+    fun reset_clearsAngleMode() {
+        key(CalcKeyEvent.Shift)
+        key(CalcKeyEvent.DegRad)
+        vm.reset()
+        assertEquals(com.brocla.rpn_calc.logic.model.AngleMode.DEG, state.angleMode)
+    }
 
-        val engine2 = CalculatorEngine(EntryStateMachine(), MathOperations(), DisplayFormatter())
-        val vm2 = CalculatorViewModel(engine2, savedHandle)
+    // -----------------------------------------------------------------------
+    // Paste
+    // -----------------------------------------------------------------------
 
-        assertEquals(state.stack.x, vm2.uiState.value.calcState.stack.x)
-        assertEquals(state.displaySettings.mode, vm2.uiState.value.calcState.displaySettings.mode)
-        assertEquals(state.angleMode, vm2.uiState.value.calcState.angleMode)
+    @Test
+    fun paste_liftsStackAndPlacesValue() {
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Enter)
+        vm.pasteFromClipboard("3.0")
+        assertEquals(3.0, state.stack.x, 1e-10)
+        assertEquals(5.0, state.stack.y, 1e-10)
+    }
+
+    @Test
+    fun paste_fromIdleLiftsStack() {
+        vm.pasteFromClipboard("7.0")
+        assertEquals(7.0, state.stack.x, 1e-10)
+    }
+
+    @Test
+    fun paste_invalidShowsError() {
+        vm.pasteFromClipboard("abc")
+        assertNotNull(state.error)
+    }
+
+    @Test
+    fun paste_commitsPartialEntry() {
+        key(CalcKeyEvent.Digit(3))
+        key(CalcKeyEvent.Decimal)
+        key(CalcKeyEvent.Digit(1))
+        vm.pasteFromClipboard("9.0")
+        assertEquals(9.0, state.stack.x, 1e-10)
+        assertEquals(3.1, state.stack.y, 1e-10)
     }
 }

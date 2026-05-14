@@ -66,7 +66,7 @@ private val portRow4 = KeyRow(listOf(
     KeySlot.Key(KeyDef("ENTER", "", CalcKeyEvent.Enter,  keyColor = CalcColors.KeyArith), weight = 2f),  
     KeySlot.Key(KeyDef("CHS",   "", CalcKeyEvent.Chs)),
     KeySlot.Key(KeyDef("EEX",   "", CalcKeyEvent.Eex,         CalcKeyEvent.OpenLayoutPicker)),
-    KeySlot.Key(KeyDef("⌫",    "", CalcKeyEvent.Backspace,   CalcKeyEvent.Clx)),  // ←
+    KeySlot.Key(KeyDef("⌫",    "", CalcKeyEvent.Backspace,   CalcKeyEvent.Clx), longPressEvent = CalcKeyEvent.ResetRequest),  // ←
 ))
 
 // Row 5: - 7 8 9 
