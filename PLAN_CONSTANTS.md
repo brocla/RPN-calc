@@ -12,6 +12,43 @@ None. The feature uses only existing dependencies (Hilt, Compose, Material 3).
 
 ---
 
+## TDD Implementation Order
+
+Three test-first loops cover all logic in the feature. UI composables (K4, K5, K6) are
+verified manually; Compose test infrastructure adds more friction than value here.
+
+### Loop 1 — Repository data and search (drives J2)
+
+1. Implement **J1** — `ConstantEntry` sealed class and `ConstantCategory` enum. No logic yet.
+2. Write **J4** tests against the not-yet-existing `ConstantsRepositoryImpl`. Tests compile
+   (J1 types exist) but fail (J2 absent). **Red.**
+3. Implement **J2** — `ConstantsRepositoryImpl` with all data entries.
+4. Implement **J3** — Hilt binding.
+5. Run J4. All pass. **Green.**
+
+### Loop 2 — PushConstant dispatch (drives K2)
+
+1. Implement **K1** — add `OpenConstants` and `PushConstant` to `CalcKeyEvent`. No dispatch yet.
+2. Write **K7** tests (`pushConstant_*`) against the unmodified ViewModel. **Red.**
+3. Implement **K2** — handle `PushConstant` in `CalculatorViewModel.dispatch()`.
+4. Run K7. All pass. **Green.**
+
+### Loop 3 — ConstantsViewModel state (drives K3)
+
+1. Write **K3a** tests using the `FakeConstantsRepository`. Class doesn't exist yet. **Red.**
+2. Implement **K3** — `ConstantsViewModel`.
+3. Run K3a. All pass. **Green.**
+
+### Remaining work (no TDD loop)
+
+4. Implement **K4** — `ConstantsBottomSheet` composable.
+5. Implement **K5** — CONST key in both layout files.
+6. Implement **K6** — `CalculatorRoute` interception.
+7. Run full test suite; verify all existing tests still pass.
+8. Manual walkthrough per Verification section.
+
+---
+
 ## Phase J — Constants Data Layer
 
 **Goal:** Define the data model and a fully-tested, injectable repository that holds all
@@ -389,6 +426,32 @@ class ConstantsViewModel @Inject constructor(
 
 ---
 
+### K3a — Tests: `ConstantsViewModelTest.kt` (new, pure JVM)
+
+Write these before implementing K3. Use a hand-written fake repository:
+
+```kotlin
+private class FakeConstantsRepository(
+    private val all: List<ConstantEntry> = emptyList(),
+) : ConstantsRepository {
+    override fun allEntries() = all
+    override fun search(query: String) =
+        if (query.isBlank()) emptyList()
+        else all.filter { /* simple stub */ true }
+}
+```
+
+```
+onQueryChange_updatesSearchQuery
+clearQuery_setsQueryToEmpty
+isSearchActive_falseWhenBlank
+isSearchActive_trueWhenNonBlank
+searchResults_delegatesToRepositorySearch
+allEntries_delegatesToRepositoryAllEntries
+```
+
+---
+
 ### K4 — `ui/calculator/constants/ConstantsBottomSheet.kt` (new)
 
 Single composable. Receives the ViewModel via `hiltViewModel()` and two callbacks.
@@ -432,31 +495,17 @@ centered text when the list is empty.
 
 **`ConstantRow`** — a `ListItem` showing:
 - headlineContent: `entry.name` or `entry.propertyName`
+- overlineContent: `entry.value` formatted in engineering notation (e.g. `2.99792458 × 10⁸`)
 - supportingContent: `entry.unit` in subdued style
 - trailingContent: `entry.symbol` in italic (empty for entries with no symbol)
 - `onClick = { onSelected(entry.value) }`
-
-**Formatting note:** The value is *not* shown in each row — only name, symbol, and unit.
-This keeps rows compact. The value is what the user gets when they tap; showing it in the
-row is not required by the requirements and adds noise.
-
-> **Design-time decision:** If the team prefers showing the value in the row, add it
-> to the `ConstantRow` as `overlineContent`. This does not affect any other code.
 
 ---
 
 ### K5 — Layout changes: CONST key
 
-**Decision required:** The exact grid position of the CONST key must be determined during
-implementation by inspecting the current key grids in `kbLayout.kt` and
-`ClassicLandscapeLayout.kt`.
-
-Candidate approaches:
-- Replace an infrequently-used shifted key with CONST on the main layer (freeing
-  the shift layer for a second function).
-- Add CONST as an additional key if the grid has available slots.
-
-The key definition in `KeyDef`:
+CONST occupies the shifted key position in row 8 directly above the π key, in both
+`kbLayout.kt` and `ClassicLandscapeLayout.kt`.
 
 ```kotlin
 KeyDef(
@@ -465,8 +514,6 @@ KeyDef(
     event = CalcKeyEvent.OpenConstants,
 )
 ```
-
-Both `kbLayout.kt` and `ClassicLandscapeLayout.kt` must be updated with the chosen slot.
 
 ---
 
@@ -557,6 +604,7 @@ After both phases are complete:
 | `ui/layouts/ClassicLandscapeLayout.kt` | Same |
 | `test/.../data/ConstantsRepositoryTest.kt` | **New** — ~20 data correctness + search tests |
 | `test/.../ui/calculator/CalculatorViewModelTest.kt` | Add 3 `pushConstant_*` tests |
+| `test/.../ui/calculator/constants/ConstantsViewModelTest.kt` | **New** — 6 state/delegation tests |
 
 ---
 

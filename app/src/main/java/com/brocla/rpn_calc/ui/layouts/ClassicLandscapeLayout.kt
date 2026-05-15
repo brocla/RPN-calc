@@ -91,7 +91,7 @@ private val row4 = KeyRow(listOf(
     KeySlot.Spacer(1f),   // blank column 6 (below ENTER)
     KeySlot.Key(KeyDef("0",   "", CalcKeyEvent.Digit(0))),
     KeySlot.Key(KeyDef(".",   "", CalcKeyEvent.Decimal)),
-    KeySlot.Key(KeyDef("π",   "", CalcKeyEvent.Pi)),
+    KeySlot.Key(KeyDef("π", "CONST", CalcKeyEvent.Pi, CalcKeyEvent.OpenConstants)),
     KeySlot.Key(KeyDef("+",   "", CalcKeyEvent.Add,      keyColor = CalcColors.KeyArith)),
 ))
 

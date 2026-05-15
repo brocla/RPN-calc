@@ -415,4 +415,33 @@ class CalculatorViewModelTest {
         assertEquals(9.0, state.stack.x, 1e-10)
         assertEquals(3.1, state.stack.y, 1e-10)
     }
+
+    // -----------------------------------------------------------------------
+    // PushConstant
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun pushConstant_liftsStackAndPlacesValue() {
+        key(CalcKeyEvent.Digit(5))
+        key(CalcKeyEvent.Enter)
+        key(CalcKeyEvent.PushConstant(3.0))
+        assertEquals(3.0, state.stack.x, 1e-15)
+        assertEquals(5.0, state.stack.y, 1e-15)
+    }
+
+    @Test
+    fun pushConstant_fromIdle() {
+        key(CalcKeyEvent.PushConstant(7.0))
+        assertEquals(7.0, state.stack.x, 1e-15)
+    }
+
+    @Test
+    fun pushConstant_commitsPartialEntry() {
+        key(CalcKeyEvent.Digit(3))
+        key(CalcKeyEvent.Decimal)
+        key(CalcKeyEvent.Digit(1))
+        key(CalcKeyEvent.PushConstant(9.0))
+        assertEquals(9.0, state.stack.x, 1e-15)
+        assertEquals(3.1, state.stack.y, 1e-10)
+    }
 }

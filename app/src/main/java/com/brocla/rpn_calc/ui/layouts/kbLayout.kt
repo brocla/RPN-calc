@@ -54,7 +54,7 @@ private val portRow3 = KeyRow(listOf(
         labelColor   = CalcColors.LabelShiftKey,
     )),
     KeySlot.Key(KeyDef("x↔y", "ALL", CalcKeyEvent.Swap, CalcKeyEvent.AllMode)),
-    KeySlot.Key(KeyDef("R↓",  "FIX",    CalcKeyEvent.RollDown, CalcKeyEvent.FixArg)),
+    KeySlot.Key(KeyDef("R▼",  "FIX",    CalcKeyEvent.RollDown, CalcKeyEvent.FixArg)), //↓
     KeySlot.Key(KeyDef("STO", "SCI", CalcKeyEvent.Sto, CalcKeyEvent.SciArg)),
     KeySlot.Key(KeyDef("RCL", "ENG", CalcKeyEvent.Rcl, CalcKeyEvent.EngArg)),
 ), 
@@ -93,14 +93,16 @@ private val portRow7 = KeyRow(listOf(
     KeySlot.Key(KeyDef("3",  "", CalcKeyEvent.Digit(3))),
 ))
 
-// Row 8: div 0 . pi
+// Row 8: div 0 . pi/CONST
 private val portRow8 = KeyRow(listOf(
     KeySlot.Key(KeyDef("÷",   "",       CalcKeyEvent.Divide, keyColor = CalcColors.KeyArith)),
     KeySlot.Key(KeyDef("0",    "",      CalcKeyEvent.Digit(0))),
     KeySlot.Key(KeyDef(".",    "",      CalcKeyEvent.Decimal)),
-    KeySlot.Key(KeyDef("π",   "",       CalcKeyEvent.Pi)),
+    KeySlot.Key(KeyDef("π", "CONST", CalcKeyEvent.Pi, CalcKeyEvent.OpenConstants)),
 
-))
+),
+primaryTopPadding = 24.dp,  // room for the "CONST" shifted label
+)
 
 val PortraitLayout = LayoutDescriptor(
     name        = "kbPortrait",

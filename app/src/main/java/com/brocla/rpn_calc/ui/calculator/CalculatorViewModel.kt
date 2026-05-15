@@ -165,11 +165,24 @@ class CalculatorViewModel @Inject constructor(
             CalcKeyEvent.NoOp          -> cs
             CalcKeyEvent.OpenLayoutPicker -> cs
             CalcKeyEvent.ResetRequest  -> cs
+            CalcKeyEvent.OpenConstants -> cs  // intercepted by CalculatorRoute before reaching here
             is CalcKeyEvent.PasteValue -> {
                 val entered = engine.pressEnter(cs)
                 entered.copy(
                     stack = entered.stack.copy(x = event.value),
                     stackLiftEnabled = true,
+                )
+            }
+            is CalcKeyEvent.PushConstant -> {
+                val committed = engine.pressEnter(cs)
+                committed.copy(
+                    stack = committed.stack.copy(
+                        x = event.value,
+                        y = committed.stack.x,
+                        z = committed.stack.y,
+                        t = committed.stack.z,
+                    ),
+                    entryState = EntryState.Idle,
                 )
             }
         }

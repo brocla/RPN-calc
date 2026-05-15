@@ -27,6 +27,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.brocla.rpn_calc.ui.calculator.constants.ConstantsBottomSheet
 import com.brocla.rpn_calc.ui.layouts.ClassicLandscapeLayout
 import com.brocla.rpn_calc.ui.layouts.LayoutDescriptor
 import com.brocla.rpn_calc.ui.layouts.LayoutOrientation
@@ -47,6 +48,7 @@ fun CalculatorRoute(
     var showLayoutPicker by remember { mutableStateOf(false) }
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showClipboardDialog by remember { mutableStateOf(false) }
+    var showConstants by remember { mutableStateOf(false) }
 
     LaunchedEffect(activeLayout) {
         val orientation = when (activeLayout.orientation) {
@@ -60,8 +62,19 @@ fun CalculatorRoute(
         when (event) {
             CalcKeyEvent.OpenLayoutPicker -> showLayoutPicker = true
             CalcKeyEvent.ResetRequest    -> showResetConfirmation = true
+            CalcKeyEvent.OpenConstants   -> showConstants = true
             else                         -> viewModel.onKey(event)
         }
+    }
+
+    if (showConstants) {
+        ConstantsBottomSheet(
+            onSelected = { value ->
+                viewModel.onKey(CalcKeyEvent.PushConstant(value))
+                showConstants = false
+            },
+            onDismiss = { showConstants = false },
+        )
     }
 
     if (showLayoutPicker) {

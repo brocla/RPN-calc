@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.brocla.rpn_calc.data.CalcStateRepository
+import com.brocla.rpn_calc.data.ConstantsRepository
+import com.brocla.rpn_calc.data.ConstantsRepositoryImpl
 import com.brocla.rpn_calc.logic.display.DisplayFormatter
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.entry.EntryStateMachine
@@ -56,4 +58,7 @@ object CalculatorModule {
 abstract class CalculatorBindingsModule {
     @Binds @Singleton
     abstract fun bindClipboardParser(impl: ClipboardParserImpl): ClipboardParser
+
+    @Binds @Singleton
+    abstract fun bindConstantsRepository(impl: ConstantsRepositoryImpl): ConstantsRepository
 }
