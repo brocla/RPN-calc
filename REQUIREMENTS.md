@@ -49,7 +49,9 @@ A Reverse Polish Notation (RPN) calculator for Android, styled after the HP-10C 
 
 ### 4.1 Capacity
 
-- The display holds up to 10 digits plus a sign character.
+- The display holds exactly **10 character positions**. The character count is computed by counting every character in the formatted string *except* the decimal point (`.`) and comma (`,`) separators — those are rendered in the font without consuming a digit position.
+- A negative sign (`-`) counts as one character position, leaving 9 positions for digits and exponent characters.
+- A formatted string that would exceed 10 characters (by this count) is never shown. The formatter must cap or fall back before returning a string.
 - The display font uses the DSEG7 seven-segment style.
 
 ### 4.1.1 Digit Grouping
@@ -65,25 +67,31 @@ Four display modes are supported. The active mode persists across sessions.
 #### FIX — Fixed Decimal
 
 - Shows a fixed number of decimal places: configurable 0–9.
-- If the value cannot be shown within the 10-digit display width at the configured decimal places, the display automatically switches to scientific notation for that value (identical to HP behavior).
-- Example: `0.001` in FIX 2 displays as `0.001` (expands past 2 places to show the value); if there is no room it shows in SCI format.
+- **Decimal-place capping:** if the requested number of decimal places would make the string exceed 10 display characters, the formatter silently reduces decimal places to the maximum that fits. Example: FIX 9 for `100` would produce 12 characters; the formatter caps to 7 decimal places (`100.0000000`), which is exactly 10.
+- **Fallback to SCI:** if the integer part of the value alone (plus sign for negatives) already exceeds 10 characters — i.e., the integer has more than 10 digits for a positive value, or more than 9 digits for a negative value — the display falls back to SCI format using the same requested decimal places (which SCI will also cap to fit).
+- **Small-value expansion:** if the value is so small that the requested decimal places would produce all zeros (e.g. `0.000001` in FIX 2 shows `0.00`), the formatter expands the decimal places just enough to show the first significant digit. If even the expanded form would exceed 10 characters, it falls back to SCI.
+- Example: `0.001` in FIX 2 displays as `0.001`; `1.23e+47` in FIX 2 falls back to SCI.
 
 #### SCI — Scientific Notation
 
-- Format: `M.DDDDDe±EE` where the number of digits after the decimal (D) is configurable 0–6.
-- Three characters are reserved for the exponent and its sign.
-- Example: SCI 3 → `1.234e+07`
+- Format: `M.DDDDDe±EE` where the number of digits after the decimal (D) is configurable 0–9.
+- **10-character cap:** the total display width (mantissa + exponent suffix, excluding `.`) must not exceed 10 characters. The formatter computes the maximum permitted decimal places as `9 − signWidth − expSuffixWidth`, where `expSuffixWidth` is 4 for two-digit exponents (`e+47`) or 5 for three-digit exponents (`e+308`). The requested decimal places are silently capped to this maximum.
+- **Exponent range:** if the absolute value of the exponent exceeds 99, the value cannot be displayed. The formatter returns `"Overflow"` for exponents > +99 and `"Underflow"` for exponents < −99. These strings are treated as display errors (see §10).
+- Example: SCI 3 → `1.234e+07`; SCI 9 for `1.0` → `1.00000e+00` (capped at 5 decimal places to fit).
 
 #### ENG — Engineering Notation
 
 - Same as SCI except the exponent is always a multiple of 3. The mantissa therefore ranges from 1 to 999.
-- Digits after the decimal point in the mantissa: configurable 0–6.
-- Example: ENG 2 with value 12,345 → `12.35e+03`
+- **10-character cap:** the formatter computes `maxDp = 10 − signWidth − mantissaIntDigits − expSuffixWidth` and silently caps the requested decimal places. The mantissa can be 1–3 integer digits, so the budget varies.
+- **Exponent range:** same ±99 limit and `"Overflow"` / `"Underflow"` behaviour as SCI.
+- Example: ENG 2 with value 12,345 → `12.35e+03`; ENG 4 for `100` → `100.000e+00` (capped at 3 decimal places to fit).
 
 #### ALL — All Significant Digits
 
 - Displays all significant digits with no trailing zeros, up to the display width.
-- Follows standard HP "ALL" mode behavior.
+- **Fixed-notation path:** `%.10g` produces up to 10 significant digits without an exponent for values in the displayable range. Trailing zeros are trimmed, but only from the fractional part — integer trailing zeros (e.g. the `0` in `9999999990`) are preserved.
+- **Scientific-notation path:** when `%.10g` produces an exponent form, trailing zeros are trimmed from the mantissa. If the result still exceeds 10 display characters (because the value has no trailing zeros and the exponent is large), the mantissa is shortened to the maximum significant digits that fit.
+- **Fallback:** if the integer part alone exceeds 10 characters, ALL falls back to SCI notation exactly as FIX does.
 
 ### 4.3 Mode Annunciators
 
@@ -301,11 +309,23 @@ Two modes: **DEG** (degrees) and **RAD** (radians). Default: DEG.
 
 ### 10.2 Error Response
 
-1. An error message is shown on the display in place of a number.
-2. X is set to `0.0`.
-3. Y, Z, T, and all memory registers are preserved.
-4. Last X is updated to the value of X before the operation.
-5. **Any key press** dismisses the error and returns to normal operation. The key press that dismisses the error is **consumed** — it clears the error state and stops there. It does not also execute its normal function. The user must press the key a second time to execute it.
+1. An error message is shown on the X-register display in place of a number.
+2. The **entire calculator state** (stack, memory, entry state, display mode, angle mode) is frozen at its value immediately before the error occurred. No values are modified.
+3. **Any key press** dismisses the error and restores the calculator to its exact pre-error state. The key press is **consumed** — it only clears the error; it does not also execute its normal function. The user must press the key a second time to execute it.
+4. The display format is not changed when an error is displayed, and is not changed when the error is cleared.
+
+**Implementation note:** When an error is introduced, the pre-error `CalculatorState` is saved in `CalculatorUiState.savedState`. On the first key tap, `savedState` is restored as the current state and `savedState` is cleared to `null`. This mechanism applies equally to math errors (division by zero, domain errors, etc.) and to display-range errors (Overflow, Underflow).
+
+### 10.3 Display-Range Errors
+
+When a result cannot be displayed because the exponent magnitude exceeds 99 (the limit of the SCI/ENG display format), the display shows:
+
+- **`Overflow`** — when the exponent is > +99
+- **`Underflow`** — when the exponent is < −99
+
+These are treated identically to math errors: the pre-error state is saved, the message is shown, and any key tap restores the pre-error state exactly.
+
+Display-range errors are detected at the formatter level: `formatSci` and `formatEng` return the string `"Overflow"` or `"Underflow"` when the exponent is out of range, and the ViewModel promotes those strings to `state.error` via `finalizeState()`.
 
 ---
 

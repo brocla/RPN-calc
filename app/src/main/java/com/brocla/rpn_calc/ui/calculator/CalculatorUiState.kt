@@ -9,4 +9,6 @@ data class CalculatorUiState(
     val yDisplayString: String = "0",
     val animSeq: Int = 0,
     val animationType: AnimationType = AnimationType.None,
+    // Holds the pre-error state so any key tap fully restores it.
+    val savedState: CalculatorState? = null,
 )

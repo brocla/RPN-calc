@@ -1,10 +1,7 @@
 package com.brocla.rpn_calc.ui.calculator.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,8 +43,7 @@ fun CalcKey(
     onLongPress: (() -> Unit)? = null,
 ) {
     val haptic = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
 
     val effectiveEvent = if (shiftActive && def.shiftedEvent != CalcKeyEvent.NoOp) {
         def.shiftedEvent
@@ -61,23 +59,23 @@ fun CalcKey(
             .padding(2.dp)
             .clip(shape)
             .background(bgColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-            ) {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onKey(effectiveEvent)
-            }
-            .then(
-                if (onLongPress != null) {
-                    Modifier.pointerInput(onLongPress) {
-                        detectTapGestures(onLongPress = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onLongPress()
-                        })
-                    }
-                } else Modifier
-            ),
+            .pointerInput(effectiveEvent, onLongPress) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onKey(effectiveEvent)
+                    },
+                    onLongPress = if (onLongPress != null) ({
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLongPress()
+                    }) else null,
+                )
+            },
     ) {
         // Primary label — drawn first (behind), offset controlled per row via primaryTopPadding
         Box(

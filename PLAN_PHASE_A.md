@@ -391,8 +391,33 @@ Rules:
 3. Otherwise format `state.stack.x` according to `state.displaySettings`.
 4. Negative zero: if the formatted value would be `-0`, return `0`.
 
-**FIX overflow rule:** if a value cannot fit in 10 characters at the configured decimal places,
-fall back to SCI with the same number of decimal places (capped at 6).
+**10-character display width rule:** The formatted string must be at most 10 characters wide,
+where width is measured by counting every character _except_ `.` and `,`. All four display
+modes enforce this constraint by capping the number of decimal places before formatting.
+
+- **FIX**: `maxDp = 10 − signWidth − integerDigitCount`. If the value does not fit at all
+  (integer digit count alone ≥ 10 for positive, ≥ 11 for negative), fall back to SCI with the
+  configured decimal places (capped at 6). Small values that round to `0.000...` at the
+  configured dp are also shown in SCI.
+- **SCI**: `maxDp = 9 − signWidth − expSuffixWidth(absExp)` where
+  `expSuffixWidth(n) = 2 + max(2, len(str(n)))` (accounts for `e+`, then 2 or more digits).
+  If `absExp > 99`, the value is out of display range: return `"Overflow"` (positive exp) or
+  `"Underflow"` (negative exp).
+- **ENG**: Same as SCI but the mantissa integer part can be 1, 2, or 3 digits depending on the
+  exponent alignment, so `maxDp = 10 − signWidth − mantissaIntDigits − expSuffixWidth(absExp)`.
+  Same ±99 exponent limit; returns `"Overflow"` or `"Underflow"` beyond that.
+- **ALL**: formats with up to 10 significant digits. For fixed-notation results, trailing zeros
+  after the decimal point are trimmed, but trailing zeros in the integer part are preserved
+  (e.g. `9999999990` must not drop its trailing zero). Falls back to SCI notation when the
+  exponent would exceed the display width.
+
+**FIX/ALL fallback:** If a value in FIX or ALL mode has 11 or more integer digits (10 or more
+for negative values), the display falls back to SCI. The SCI fallback uses the same configured
+decimal places as FIX, capped at 6.
+
+**SCI/ENG Overflow/Underflow:** When `formatSci` or `formatEng` returns `"Overflow"` or
+`"Underflow"`, the ViewModel's `finalizeState()` promotes this to `state.error`. The error
+is then handled by the standard error-clear mechanism (see Step A7).
 
 **Entry buffer formatting:**
 - `Mantissa`: show digits with sign and decimal point as typed. If empty, show `0`.
@@ -616,12 +641,30 @@ Internal helper `private fun commitEntry(state: CalculatorState): CalculatorStat
 `entryStateMachine.completeEntry(state)` before any operation that needs a resolved X value.
 
 Internal helper `private fun applyUnary(state: CalculatorState, op: (Double) -> CalcResult): CalculatorState`
-— commits entry, saves lastX, applies op, on Err sets error + clears X, on Value applies
-unary result. Sets stackLiftEnabled=true.
+— commits entry, saves lastX, applies op, on Err sets `state.error` (stack is otherwise
+unchanged from the committed state), on Value applies unary result. Sets stackLiftEnabled=true.
 
 Internal helper `private fun applyBinary(state: CalculatorState, op: (Double, Double) -> CalcResult): CalculatorState`
-— commits entry, saves lastX, applies op with (stack.y, stack.x), on Err sets error + clears
-X, on Value applies binary result (stack drops, T replicates). Sets stackLiftEnabled=true.
+— commits entry, saves lastX, applies op with (stack.y, stack.x), on Err sets `state.error`
+(stack unchanged), on Value applies binary result (stack drops, T replicates). Sets
+stackLiftEnabled=true.
+
+**Error display and state preservation:** When an error occurs (math error or display-range
+error), the calculator must show the error message and preserve the _exact_ pre-error state.
+This is implemented in the ViewModel layer (`CalculatorViewModel`), not in the engine:
+
+1. When `dispatch()` produces a state where `finalCs.error != null` and the previous state had
+   no error, `CalculatorUiState.savedState` is set to the pre-key-press `CalculatorState`.
+2. On the next key press (any key), if `calcState.error != null`, the VM restores `savedState`
+   as the current state (clearing the error), sets `savedState = null`, and returns without
+   executing the key's normal function.
+3. The display format is not changed when an error is shown or cleared.
+4. The `CalculatorUiState` data class carries `savedState: CalculatorState? = null` for this
+   purpose.
+
+Display-range errors (`"Overflow"`, `"Underflow"`) are promoted to `state.error` by the VM's
+`finalizeState()` method, which checks whether `engine.getDisplay(cs)` returns either of those
+strings. Once promoted, they follow the same save/restore path as math errors.
 
 ### Write tests first: `CalculatorEngineTest.kt`
 

@@ -91,7 +91,12 @@ class CalculatorEngine(
 
     fun pressBackspace(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
-        return entryStateMachine.pressBackspace(s)
+        // In Idle state (no digit entry in progress) backspace acts as CLX: clear X to 0.
+        return if (s.entryState is EntryState.Idle) {
+            s.copy(stack = s.stack.withX(0.0), stackLiftEnabled = false)
+        } else {
+            entryStateMachine.pressBackspace(s)
+        }
     }
 
     // ---- Stack operations ----

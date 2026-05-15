@@ -408,7 +408,7 @@ class CalculatorEngineTest {
             stack = com.brocla.rpn_calc.logic.model.Stack(x = 12345.0),
             displaySettings = DisplaySettings(DisplayMode.Sci(6))
         )
-        assertEquals("1.234500e+04", fmt.format(s))
+        assertEquals("1.23450e+04", fmt.format(s))  // capped at 5 dp to fit 10-char display
     }
 
     @Test fun eng0_boundary() {

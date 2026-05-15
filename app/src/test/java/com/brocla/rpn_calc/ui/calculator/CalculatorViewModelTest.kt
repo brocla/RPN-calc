@@ -7,6 +7,7 @@ import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.entry.EntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.logic.model.DisplayMode
+import com.brocla.rpn_calc.logic.model.EntryState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -225,11 +226,12 @@ class CalculatorViewModelTest {
         key(CalcKeyEvent.Digit(0))
         key(CalcKeyEvent.Reciprocal)
         assertTrue(state.error != null)
-        val xBeforeClear = 0.0
-        key(CalcKeyEvent.Add)
+        key(CalcKeyEvent.Add)          // clears error — does NOT execute Add
         assertNull(state.error)
-        assertEquals(xBeforeClear, state.stack.x)
-        key(CalcKeyEvent.Add)
+        // Pre-error state is restored: user had "0" being typed (entry not yet committed)
+        assertTrue(state.entryState is EntryState.Mantissa,
+            "Expected entry state restored to Mantissa, got ${state.entryState}")
+        key(CalcKeyEvent.Add)          // now executes: commits 0, then Y=5 + X=0 = 5
         assertEquals(5.0, state.stack.x)
     }
 

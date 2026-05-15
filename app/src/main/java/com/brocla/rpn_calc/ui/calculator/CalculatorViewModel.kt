@@ -43,13 +43,15 @@ class CalculatorViewModel @Inject constructor(
         val current = _uiState.value
         val cs = current.calcState
 
-        // Any key press clears the error — does NOT also execute the key; no animation
+        // Any key press clears the error — does NOT also execute the key; no animation.
+        // Restore the pre-error state that was saved when the error was introduced.
         if (cs.error != null) {
-            val cleared = cs.copy(error = null, shiftActive = false)
+            val restored = (current.savedState ?: cs).copy(error = null, shiftActive = false)
             saveAndEmit(current.copy(
-                calcState      = cleared,
-                displayString  = buildDisplay(cleared),
-                yDisplayString = buildYDisplay(cleared),
+                calcState      = restored,
+                savedState     = null,
+                displayString  = buildDisplay(restored),
+                yDisplayString = buildYDisplay(restored),
                 animationType  = AnimationType.None,
             ))
             return
@@ -66,11 +68,12 @@ class CalculatorViewModel @Inject constructor(
                 PendingOp.EngArg -> engine.pressEngMode(cs, d)
                 PendingOp.None   -> cs
             }
+            val resolvedCs = finalizeState(newCs.copy(shiftActive = false))
             saveAndEmit(current.copy(
-                calcState      = newCs.copy(shiftActive = false),
+                calcState      = resolvedCs,
                 pendingOp      = PendingOp.None,
-                displayString  = buildDisplay(newCs),
-                yDisplayString = buildYDisplay(newCs),
+                displayString  = buildDisplay(resolvedCs),
+                yDisplayString = buildYDisplay(resolvedCs),
                 animationType  = AnimationType.None,
             ))
             return
@@ -171,7 +174,9 @@ class CalculatorViewModel @Inject constructor(
             }
         }
 
-        val finalCs = if (event is CalcKeyEvent.Shift) newCs else newCs.copy(shiftActive = false)
+        val finalCs = finalizeState(
+            if (event is CalcKeyEvent.Shift) newCs else newCs.copy(shiftActive = false)
+        )
 
         val animationType = when (event) {
             CalcKeyEvent.Enter                                              -> AnimationType.Enter
@@ -183,9 +188,14 @@ class CalculatorViewModel @Inject constructor(
             else                                                            -> AnimationType.None
         }
 
+        // If this key introduced a new error, save the state from before the key press
+        // so the error-clear path can fully restore it.
+        val newSavedState = if (finalCs.error != null && ui.calcState.error == null) ui.calcState else null
+
         return ui.copy(
             calcState      = finalCs,
             pendingOp      = newPendingOp,
+            savedState     = newSavedState,
             displayString  = buildDisplay(finalCs),
             yDisplayString = buildYDisplay(finalCs),
             animSeq        = if (animationType != AnimationType.None) ui.animSeq + 1 else ui.animSeq,
@@ -195,6 +205,17 @@ class CalculatorViewModel @Inject constructor(
 
     private fun buildDisplay(cs: CalculatorState): String =
         insertThousandsCommas(engine.getDisplay(cs))
+
+    /**
+     * If the display string is a range error ("Overflow"/"Underflow"), promote it
+     * into state.error so the VM's key-tap error-clearing logic handles it.
+     */
+    private fun finalizeState(cs: CalculatorState): CalculatorState {
+        if (cs.error != null) return cs
+        val display = engine.getDisplay(cs)
+        return if (display == "Overflow" || display == "Underflow") cs.copy(error = display)
+        else cs
+    }
 
     private fun buildYDisplay(cs: CalculatorState): String =
         insertThousandsCommas(engine.getDisplay(
