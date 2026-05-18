@@ -8,7 +8,7 @@ sealed class EntryState {
     @Serializable @SerialName("idle")
     object Idle : EntryState()
 
-    @Serializable @SerialName("mantissa")
+    @Serializable @SerialName("mantissa") // mantissa is a misnome here. This is really ordinary decimal notation.
     data class Mantissa(
         val digits: String,           // integer-part digits
         val fracDigits: String = "",  // fractional-part digits (only populated after decimal pressed)
