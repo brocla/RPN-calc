@@ -26,6 +26,36 @@ The public contract with the `:app` module does **not** change in signature. `Ca
 
 ---
 
+## 1a. Font and text style requirements
+
+The display uses a modified DSEG7Classic-BoldItalic font. The following advance-width constraints are required for correct digit alignment across both display registers:
+
+| Character | Required advance width |
+|-----------|----------------------|
+| Digits `0`–`9` | One digit-width (816 font units) |
+| Minus `-` | One digit-width (816 font units) |
+| Space ` ` (sign slot, padding) | One digit-width (816 font units) |
+| Decimal point `.` | Zero (0 font units) |
+| Comma `,` | Zero (0 font units) |
+
+**Rationale:** The sign slot (position 0) is always occupied by either `'-'` or `' '`. If space has a narrower advance width than a digit, the first digit of a positive number sits at a different horizontal position than the first digit of a negative number, causing misalignment between Y and X registers, and between different numbers in the same register. Decimal points and commas must be zero-width so they do not shift digit positions.
+
+**Verification:** `artwork/DSEG7Classic-BoldItalic.ttf` is the master font file. After any font edit, copy it to `app/src/main/res/font/dseg7classic_bolditalic.ttf` before building. The instrumented tests in `DisplayAlignmentTest` verify these widths on a real device.
+
+**`DisplayTextStyle` letter spacing:** `letterSpacing` must be set to `0.sp` in `CalcType.kt`. A non-zero letter spacing is applied by Compose after every glyph, including zero-advance-width glyphs, which would add a visible gap after each decimal point and comma and cause column misalignment.
+
+```kotlin
+val DisplayTextStyle = TextStyle(
+    fontFamily = Dseg7,
+    fontSize = 37.sp,
+    letterSpacing = 0.sp,   // must be 0 — non-zero value adds gap after zero-width glyphs
+    color = CalcColors.DisplayText,
+)
+```
+
+
+---
+
 ## 2. Boundary with the `:app` module
 
 ### 2a. Sign slot — handled in the formatter (logic layer)

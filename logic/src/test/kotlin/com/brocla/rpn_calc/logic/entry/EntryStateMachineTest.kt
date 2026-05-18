@@ -18,7 +18,7 @@ class EntryStateMachineTest {
         fracDigits: String = "",
         hasDecimal: Boolean = false,
         isNegative: Boolean = false
-    ) = EntryState.Mantissa(digits, fracDigits, hasDecimal, isNegative)
+    ) = EntryState.Standard(digits, fracDigits, hasDecimal, isNegative)
 
     private fun exponent(
         mIntPart: String, mFracPart: String = "", mDec: Boolean = false, mNeg: Boolean = false,
@@ -29,8 +29,8 @@ class EntryStateMachineTest {
 
     @Test fun digit_fromIdle_noLift() {
         val s = esm.pressDigit(idle, 1)
-        assertTrue(s.entryState is EntryState.Mantissa)
-        assertEquals("1", (s.entryState as EntryState.Mantissa).digits)
+        assertTrue(s.entryState is EntryState.Standard)
+        assertEquals("1", (s.entryState as EntryState.Standard).digits)
         assertEquals(0.0, s.stack.x)  // no lift
     }
 
@@ -43,30 +43,30 @@ class EntryStateMachineTest {
     @Test fun digit_maxTenDigits() {
         val tenDigits = idle.copy(entryState = mantissa("1234567890"))
         val s = esm.pressDigit(tenDigits, 1)
-        assertEquals("1234567890", (s.entryState as EntryState.Mantissa).digits)
+        assertEquals("1234567890", (s.entryState as EntryState.Standard).digits)
     }
 
     @Test fun digit_suppressLeadingZero() {
         val s = esm.pressDigit(idle.copy(entryState = mantissa("0")), 0)
-        assertEquals("0", (s.entryState as EntryState.Mantissa).digits)
+        assertEquals("0", (s.entryState as EntryState.Standard).digits)
     }
 
     @Test fun digit_appendsNormally() {
         val s = esm.pressDigit(idle.copy(entryState = mantissa("12")), 3)
-        assertEquals("123", (s.entryState as EntryState.Mantissa).digits)
+        assertEquals("123", (s.entryState as EntryState.Standard).digits)
     }
 
     // ---- pressDecimal ----
 
     @Test fun decimal_fromIdle() {
         val s = esm.pressDecimal(idle)
-        val es = s.entryState as EntryState.Mantissa
+        val es = s.entryState as EntryState.Standard
         assertTrue(es.hasDecimal)
     }
 
     @Test fun decimal_fromMantissa() {
         val s = esm.pressDecimal(idle.copy(entryState = mantissa("3")))
-        assertTrue((s.entryState as EntryState.Mantissa).hasDecimal)
+        assertTrue((s.entryState as EntryState.Standard).hasDecimal)
     }
 
     @Test fun decimal_twice_noop() {
@@ -80,12 +80,12 @@ class EntryStateMachineTest {
 
     @Test fun chs_mantissa_positive() {
         val s = esm.pressChs(idle.copy(entryState = mantissa("3", isNegative = false)))
-        assertTrue((s.entryState as EntryState.Mantissa).isNegative)
+        assertTrue((s.entryState as EntryState.Standard).isNegative)
     }
 
     @Test fun chs_mantissa_negative() {
         val s = esm.pressChs(idle.copy(entryState = mantissa("3", isNegative = true)))
-        assertFalse((s.entryState as EntryState.Mantissa).isNegative)
+        assertFalse((s.entryState as EntryState.Standard).isNegative)
     }
 
     @Test fun chs_exponent_positive() {
@@ -118,23 +118,74 @@ class EntryStateMachineTest {
         assertEquals("", es.exponentDigits)
     }
 
+    // ---- pressEex with 9/10 digit mantissa ----
+    // The display has 8 significand positions (1–8). When EEX is pressed with more
+    // than 8 significant digits, the mantissa must be truncated to 8 to leave room
+    // for the exponent at positions 9–11.
+    //
+    // Case A — pure integer, 9 digits: guard currently returns state unchanged (no-op).
+    // [RED until fix]
+    @Test fun eex_nineIntegerDigits_transitionsToExponent() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("123456789")))
+        assertTrue(s.entryState is EntryState.Exponent,
+            "EEX with 9 integer digits must transition to Exponent; stayed Standard")
+    }
+
+    // [RED until fix]
+    @Test fun eex_nineIntegerDigits_truncatesTo8() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("123456789")))
+        val es = s.entryState as EntryState.Exponent
+        assertEquals("12345678", es.mantissaIntPart,
+            "9-digit integer mantissa must be truncated to 8 digits")
+        assertEquals("", es.mantissaFracPart)
+    }
+
+    // Case B — pure integer, 10 digits: same guard blocks transition.
+    // [RED until fix]
+    @Test fun eex_tenIntegerDigits_transitionsToExponent() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("1234567890")))
+        assertTrue(s.entryState is EntryState.Exponent,
+            "EEX with 10 integer digits must transition to Exponent; stayed Standard")
+    }
+
+    // [RED until fix]
+    @Test fun eex_tenIntegerDigits_truncatesTo8() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("1234567890")))
+        val es = s.entryState as EntryState.Exponent
+        assertEquals("12345678", es.mantissaIntPart,
+            "10-digit integer mantissa must be truncated to 8 digits")
+        assertEquals("", es.mantissaFracPart)
+    }
+
+    // Case C — 7 integer + 2 frac = 9 total digits: guard passes (int < 8) but
+    // formatter overflows because sigDigitCount = 9 > 8.
+    // [RED until fix]
+    @Test fun eex_sevenIntTwoFrac_truncatesFracTo1() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("1234567", "89", hasDecimal = true)))
+        val es = s.entryState as EntryState.Exponent
+        assertEquals("1234567", es.mantissaIntPart)
+        assertEquals("8", es.mantissaFracPart,
+            "frac part must be truncated so total sig digits = 8; expected \"8\", got \"${es.mantissaFracPart}\"")
+    }
+
     // ---- pressBackspace ----
 
     @Test fun backspace_removesLastDigit() {
         val s = esm.pressBackspace(idle.copy(entryState = mantissa("123")))
-        assertEquals("12", (s.entryState as EntryState.Mantissa).digits)
+        assertEquals("12", (s.entryState as EntryState.Standard).digits)
     }
 
     @Test fun backspace_removesDecimal() {
         val s = esm.pressBackspace(idle.copy(entryState = mantissa("3", hasDecimal = true)))
-        val es = s.entryState as EntryState.Mantissa
+        val es = s.entryState as EntryState.Standard
         assertFalse(es.hasDecimal)
         assertEquals("3", es.digits)
     }
 
-    @Test fun backspace_emptyMantissa_stays() {
+    @Test fun backspace_emptyMantissa_transitionsToIdle() {
         val s = esm.pressBackspace(idle.copy(entryState = mantissa("")))
-        assertEquals("", (s.entryState as EntryState.Mantissa).digits)
+        assertEquals(EntryState.Idle, s.entryState)
+        assertEquals(0.0, s.stack.x)
     }
 
     @Test fun backspace_exponentDigit() {
@@ -144,7 +195,7 @@ class EntryStateMachineTest {
 
     @Test fun backspace_exponentEmpty_revertsMantissa() {
         val s = esm.pressBackspace(idle.copy(entryState = exponent("12", eDigits = "")))
-        val es = s.entryState as EntryState.Mantissa
+        val es = s.entryState as EntryState.Standard
         assertEquals("12", es.digits)
     }
 

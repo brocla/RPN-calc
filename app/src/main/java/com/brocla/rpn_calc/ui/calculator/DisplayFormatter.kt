@@ -6,23 +6,29 @@ package com.brocla.rpn_calc.ui.calculator
  * modified DSEG7 font has advance-width 0, so it does not shift digit positions.
  *
  * Rules:
- *  - Strings containing 'e'/'E' (SCI / ENG format) are returned unchanged.
+ *  - Error strings (no sign-slot prefix) are returned unchanged.
+ *  - SCI / ENG / exponent-entry strings (which contain internal spaces after position 0)
+ *    are returned unchanged.
+ *  - Position 0 is always the sign-slot character (' ' or '-'); it is preserved
+ *    unchanged and is never included in the digit-grouping logic.
  *  - Only the integer portion (left of '.') is grouped.
- *  - Negative sign is preserved before the first group.
  *  - Integer parts with ≤ 3 digits need no comma.
  */
 fun insertThousandsCommas(plain: String): String {
-    if (plain.contains('e', ignoreCase = true)) return plain
+    if (plain.isEmpty()) return plain
+    if (plain[0] !in " -") return plain          // error strings have no sign slot
+    if (plain.drop(1).contains(' ')) return plain // SCI/ENG/exponent-entry have internal spaces
+    if (plain.drop(1).contains('-')) return plain // exponent-entry with negative exponent, no spaces
 
-    val dotIndex = plain.indexOf('.')
-    val intPart  = if (dotIndex >= 0) plain.substring(0, dotIndex) else plain
-    val decPart  = if (dotIndex >= 0) plain.substring(dotIndex)    else ""
+    val signChar = plain[0]           // always ' ' or '-'
+    val rest = plain.substring(1)
 
-    val negative = intPart.startsWith('-')
-    val digits   = if (negative) intPart.drop(1) else intPart
+    val dotIndex = rest.indexOf('.')
+    val intPart  = if (dotIndex >= 0) rest.substring(0, dotIndex) else rest
+    val decPart  = if (dotIndex >= 0) rest.substring(dotIndex)    else ""
 
-    if (digits.length <= 3) return plain
+    if (intPart.length <= 3) return plain
 
-    val grouped = digits.reversed().chunked(3).joinToString(",").reversed()
-    return (if (negative) "-" else "") + grouped + decPart
+    val grouped = intPart.reversed().chunked(3).joinToString(",").reversed()
+    return signChar + grouped + decPart
 }

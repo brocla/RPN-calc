@@ -102,7 +102,7 @@ fun PortraitDisplayPanel(
             Text(
                 text = state.display,
                 style = DisplayTextStyle,
-                textAlign = TextAlign.End,
+                textAlign = TextAlign.Start,
                 maxLines = 1,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -120,7 +120,7 @@ fun PortraitDisplayPanel(
             Text(
                 text = state.display,
                 style = DisplayTextStyle,
-                textAlign = TextAlign.End,
+                textAlign = TextAlign.Start,
                 maxLines = 1,
                 modifier = Modifier
                     .fillMaxWidth()

@@ -9,8 +9,10 @@ import com.brocla.rpn_calc.data.CalcStateRepository
 import com.brocla.rpn_calc.data.ConstantsRepository
 import com.brocla.rpn_calc.data.ConstantsRepositoryImpl
 import com.brocla.rpn_calc.logic.display.DisplayFormatter
+import com.brocla.rpn_calc.logic.display.IDisplayFormatter
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.entry.EntryStateMachine
+import com.brocla.rpn_calc.logic.entry.IEntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.ui.calculator.ClipboardParser
 import com.brocla.rpn_calc.ui.calculator.ClipboardParserImpl
@@ -37,9 +39,9 @@ object CalculatorModule {
 
     @Provides @Singleton
     fun provideCalculatorEngine(
-        esm: EntryStateMachine,
+        esm: IEntryStateMachine,
         math: MathOperations,
-        fmt: DisplayFormatter,
+        fmt: IDisplayFormatter,
     ) = CalculatorEngine(esm, math, fmt)
 
     @Provides @Singleton
@@ -61,4 +63,10 @@ abstract class CalculatorBindingsModule {
 
     @Binds @Singleton
     abstract fun bindConstantsRepository(impl: ConstantsRepositoryImpl): ConstantsRepository
+
+    @Binds @Singleton
+    abstract fun bindEntryStateMachine(impl: EntryStateMachine): IEntryStateMachine
+
+    @Binds @Singleton
+    abstract fun bindDisplayFormatter(impl: DisplayFormatter): IDisplayFormatter
 }

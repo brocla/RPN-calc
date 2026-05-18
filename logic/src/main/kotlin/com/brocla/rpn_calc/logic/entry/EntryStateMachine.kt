@@ -3,19 +3,19 @@ package com.brocla.rpn_calc.logic.entry
 import com.brocla.rpn_calc.logic.model.CalculatorState
 import com.brocla.rpn_calc.logic.model.EntryState
 
-class EntryStateMachine {
+class EntryStateMachine : IEntryStateMachine {
 
-    fun pressDigit(state: CalculatorState, digit: Int): CalculatorState {
+    override fun pressDigit(state: CalculatorState, digit: Int): CalculatorState {
         return when (val es = state.entryState) {
             is EntryState.Idle -> {
                 val newStack = if (state.stackLiftEnabled) state.stack.lift() else state.stack
                 state.copy(
                     stack = newStack,
-                    entryState = EntryState.Mantissa(digit.toString()),
+                    entryState = EntryState.Standard(digit.toString()),
                     stackLiftEnabled = false
                 )
             }
-            is EntryState.Mantissa -> {
+            is EntryState.Standard -> {
                 val totalDigits = es.digits.length + es.fracDigits.length
                 if (totalDigits >= 10) return state
                 if (es.hasDecimal) {
@@ -38,17 +38,17 @@ class EntryStateMachine {
         }
     }
 
-    fun pressDecimal(state: CalculatorState): CalculatorState {
+    override fun pressDecimal(state: CalculatorState): CalculatorState {
         return when (val es = state.entryState) {
             is EntryState.Idle -> {
                 val newStack = if (state.stackLiftEnabled) state.stack.lift() else state.stack
                 state.copy(
                     stack = newStack,
-                    entryState = EntryState.Mantissa("", hasDecimal = true),
+                    entryState = EntryState.Standard("", hasDecimal = true),
                     stackLiftEnabled = false
                 )
             }
-            is EntryState.Mantissa -> {
+            is EntryState.Standard -> {
                 if (es.hasDecimal) state
                 else state.copy(entryState = es.copy(hasDecimal = true))
             }
@@ -56,26 +56,52 @@ class EntryStateMachine {
         }
     }
 
-    fun pressChs(state: CalculatorState): CalculatorState {
+    override fun pressChs(state: CalculatorState): CalculatorState {
         return when (val es = state.entryState) {
-            is EntryState.Mantissa -> state.copy(entryState = es.copy(isNegative = !es.isNegative))
+            is EntryState.Standard -> {
+                val isZero = (es.digits.isEmpty() || es.digits == "0") &&
+                    (es.fracDigits.isEmpty() || es.fracDigits.all { it == '0' })
+                if (isZero) state
+                else state.copy(entryState = es.copy(isNegative = !es.isNegative))
+            }
             is EntryState.Exponent -> state.copy(entryState = es.copy(exponentIsNegative = !es.exponentIsNegative))
             is EntryState.Idle -> state  // handled by CalculatorEngine
         }
     }
 
-    fun pressEex(state: CalculatorState): CalculatorState {
+    override fun pressEex(state: CalculatorState): CalculatorState {
         return when (val es = state.entryState) {
-            is EntryState.Mantissa -> state.copy(
-                entryState = EntryState.Exponent(
-                    mantissaIntPart = es.digits,
-                    mantissaFracPart = es.fracDigits,
-                    mantissaHasDecimal = es.hasDecimal,
-                    mantissaIsNegative = es.isNegative,
-                    exponentDigits = "",
-                    exponentIsNegative = false
-                )
-            )
+            is EntryState.Standard -> {
+                val isZero = (es.digits.isEmpty() || es.digits == "0") &&
+                    (es.fracDigits.isEmpty() || es.fracDigits.all { it == '0' })
+                if (isZero) {
+                    // Treat as EEX from Idle: start fresh with mantissa "1"
+                    state.copy(
+                        entryState = EntryState.Exponent(
+                            mantissaIntPart = "1",
+                            mantissaFracPart = "",
+                            mantissaHasDecimal = false,
+                            mantissaIsNegative = false,
+                            exponentDigits = "",
+                            exponentIsNegative = false
+                        )
+                    )
+                } else {
+                    // Truncate mantissa to 8 significant digits to leave room for exponent
+                    val maxFrac = (8 - es.digits.length).coerceAtLeast(0)
+                    val truncatedFrac = es.fracDigits.take(maxFrac)
+                    state.copy(
+                        entryState = EntryState.Exponent(
+                            mantissaIntPart = es.digits.take(8),
+                            mantissaFracPart = truncatedFrac,
+                            mantissaHasDecimal = es.hasDecimal,
+                            mantissaIsNegative = es.isNegative,
+                            exponentDigits = "",
+                            exponentIsNegative = false
+                        )
+                    )
+                }
+            }
             is EntryState.Idle -> {
                 val newStack = if (state.stackLiftEnabled) state.stack.lift() else state.stack
                 state.copy(
@@ -95,35 +121,46 @@ class EntryStateMachine {
         }
     }
 
-    fun pressBackspace(state: CalculatorState): CalculatorState {
+    override fun pressBackspace(state: CalculatorState): CalculatorState {
         return when (val es = state.entryState) {
             is EntryState.Idle -> state
-            is EntryState.Mantissa -> when {
+            is EntryState.Standard -> when {
                 es.hasDecimal && es.fracDigits.isNotEmpty() ->
                     state.copy(entryState = es.copy(fracDigits = es.fracDigits.dropLast(1)))
                 es.hasDecimal ->
                     state.copy(entryState = es.copy(hasDecimal = false))
-                es.digits.isEmpty() -> state
-                else -> state.copy(entryState = es.copy(digits = es.digits.dropLast(1)))
+                else -> {
+                    val newDigits = es.digits.dropLast(1)
+                    if (newDigits.isEmpty()) {
+                        state.copy(
+                            stack = state.stack.withX(0.0),
+                            entryState = EntryState.Idle,
+                            stackLiftEnabled = false
+                        )
+                    } else {
+                        state.copy(entryState = es.copy(digits = newDigits))
+                    }
+                }
             }
-            is EntryState.Exponent -> {
-                if (es.exponentDigits.isEmpty()) {
+            is EntryState.Exponent -> when {
+                es.exponentDigits.isNotEmpty() ->
+                    state.copy(entryState = es.copy(exponentDigits = es.exponentDigits.dropLast(1)))
+                es.exponentIsNegative ->
+                    state.copy(entryState = es.copy(exponentIsNegative = false))
+                else ->
                     state.copy(
-                        entryState = EntryState.Mantissa(
+                        entryState = EntryState.Standard(
                             digits = es.mantissaIntPart,
                             fracDigits = es.mantissaFracPart,
                             hasDecimal = es.mantissaHasDecimal,
                             isNegative = es.mantissaIsNegative
                         )
                     )
-                } else {
-                    state.copy(entryState = es.copy(exponentDigits = es.exponentDigits.dropLast(1)))
-                }
             }
         }
     }
 
-    fun completeEntry(state: CalculatorState): CalculatorState {
+    override fun completeEntry(state: CalculatorState): CalculatorState {
         return when (val es = state.entryState) {
             is EntryState.Idle -> state
             else -> {
@@ -137,15 +174,15 @@ class EntryStateMachine {
         }
     }
 
-    fun currentDisplayValue(state: CalculatorState): Double {
+    override fun currentDisplayValue(state: CalculatorState): Double {
         return when (val es = state.entryState) {
             is EntryState.Idle -> state.stack.x
-            is EntryState.Mantissa -> parseMantissa(es)
+            is EntryState.Standard -> parseMantissa(es)
             is EntryState.Exponent -> parseExponent(es)
         }
     }
 
-    private fun parseMantissa(es: EntryState.Mantissa): Double {
+    private fun parseMantissa(es: EntryState.Standard): Double {
         val intPart = es.digits.ifEmpty { "0" }
         val str = if (es.hasDecimal) "$intPart.${es.fracDigits}" else intPart
         val value = str.toDoubleOrNull() ?: 0.0

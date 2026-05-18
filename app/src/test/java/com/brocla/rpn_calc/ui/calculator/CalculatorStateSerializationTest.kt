@@ -43,11 +43,11 @@ class CalculatorStateSerializationTest {
     @Test
     fun roundTrip_entryState_mantissa() {
         val original = CalculatorState(
-            entryState = EntryState.Mantissa(digits = "314", hasDecimal = true, isNegative = false)
+            entryState = EntryState.Standard(digits = "314", hasDecimal = true, isNegative = false)
         )
         val restored = roundTrip(original)
         val es = restored.entryState
-        assertTrue(es is EntryState.Mantissa)
+        assertTrue(es is EntryState.Standard)
         assertEquals("314", es.digits)
         assertEquals(true, es.hasDecimal)
         assertEquals(false, es.isNegative)
