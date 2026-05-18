@@ -47,7 +47,7 @@ The display uses a modified DSEG7Classic-BoldItalic font. The following advance-
 ```kotlin
 val DisplayTextStyle = TextStyle(
     fontFamily = Dseg7,
-    fontSize = 37.sp,
+    fontSize = 39.sp,
     letterSpacing = 0.sp,   // must be 0 — non-zero value adds gap after zero-width glyphs
     color = CalcColors.DisplayText,
 )

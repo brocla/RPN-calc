@@ -35,7 +35,7 @@ fun mixedFontLabel(label: String, timesScale: Float = 1f) = buildAnnotatedString
 
 val DisplayTextStyle = TextStyle(
     fontFamily = Dseg7,
-    fontSize = 37.sp,
+    fontSize = 39.sp,
     letterSpacing = 0.sp,
     color = CalcColors.DisplayText,
 )
