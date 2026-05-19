@@ -2,7 +2,7 @@
 
 An RPN calculator for Android, styled after the HP-41C, with a smattering of 12C and 35s. Written in Kotlin with Jetpack Compose.
 
-![RPN Calculator Layout](assets/RPN_Calc.png)
+<img src="assets/RPN_Calc.png" width="50%"/>
 
 ## Why
 The world does not need another calculator app. But I’m particular about calculators, and I was unhappy with what I could find on Google Play. Since software is essentially free now, I decided to make my own personal calculator, exactly the way I like it. It isn’t meant for anyone else. Every design choice reflects what I want. Very me‑centric.
