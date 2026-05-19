@@ -229,8 +229,8 @@ class CalculatorViewModelTest {
         key(CalcKeyEvent.Add)          // clears error — does NOT execute Add
         assertNull(state.error)
         // Pre-error state is restored: user had "0" being typed (entry not yet committed)
-        assertTrue(state.entryState is EntryState.Mantissa,
-            "Expected entry state restored to Mantissa, got ${state.entryState}")
+        assertTrue(state.entryState is EntryState.Standard,
+            "Expected entry state restored to Standard, got ${state.entryState}")
         key(CalcKeyEvent.Add)          // now executes: commits 0, then Y=5 + X=0 = 5
         assertEquals(5.0, state.stack.x)
     }
@@ -265,13 +265,13 @@ class CalculatorViewModelTest {
     @Test
     fun decimal_digitsAfterDecimalAppearRightOfDecimalPoint() {
         key(CalcKeyEvent.Digit(3))
-        assertEquals("3", display)
+        assertEquals(" 3", display)
         key(CalcKeyEvent.Digit(1))
-        assertEquals("31", display)
+        assertEquals(" 31", display)
         key(CalcKeyEvent.Decimal)
-        assertEquals("31.", display)
+        assertEquals(" 31.", display)
         key(CalcKeyEvent.Digit(4))
-        assertEquals("31.4", display)
+        assertEquals(" 31.4", display)
     }
 
     @Test
@@ -280,7 +280,7 @@ class CalculatorViewModelTest {
         key(CalcKeyEvent.Decimal)
         key(CalcKeyEvent.Digit(1))
         key(CalcKeyEvent.Digit(4))
-        assertEquals("3.14", display)
+        assertEquals(" 3.14", display)
     }
 
     @Test

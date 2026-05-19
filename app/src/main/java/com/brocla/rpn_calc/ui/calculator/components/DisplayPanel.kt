@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -85,11 +86,12 @@ fun DisplayPanel(
             Text(
                 text = state.display,
                 style = DisplayTextStyle,
-                textAlign = TextAlign.End,
+                textAlign = TextAlign.Start,
                 maxLines = 1,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Bottom),
+                    .wrapContentHeight(Alignment.Bottom)
+                    .testTag("x_register"),
             )
         }
     }

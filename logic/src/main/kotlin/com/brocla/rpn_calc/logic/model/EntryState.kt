@@ -8,8 +8,8 @@ sealed class EntryState {
     @Serializable @SerialName("idle")
     object Idle : EntryState()
 
-    @Serializable @SerialName("mantissa")
-    data class Mantissa(
+    @Serializable @SerialName("mantissa") // SerialName stays "mantissa" for DataStore compatibility
+    data class Standard(
         val digits: String,           // integer-part digits
         val fracDigits: String = "",  // fractional-part digits (only populated after decimal pressed)
         val hasDecimal: Boolean = false,

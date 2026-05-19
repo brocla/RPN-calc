@@ -390,7 +390,7 @@ class CalculatorEngineTest {
             stack = com.brocla.rpn_calc.logic.model.Stack(x = 3.7),
             displaySettings = DisplaySettings(DisplayMode.Fix(0))
         )
-        assertEquals("4", fmt.format(s))
+        assertEquals(" 4.", fmt.format(s))
     }
 
     @Test fun fix9_boundary() {
@@ -399,7 +399,7 @@ class CalculatorEngineTest {
             stack = com.brocla.rpn_calc.logic.model.Stack(x = 1.23456789),
             displaySettings = DisplaySettings(DisplayMode.Fix(9))
         )
-        assertEquals("1.234567890", fmt.format(s))
+        assertEquals(" 1.234567890", fmt.format(s))
     }
 
     @Test fun sci6_boundary() {
@@ -408,7 +408,8 @@ class CalculatorEngineTest {
             stack = com.brocla.rpn_calc.logic.model.Stack(x = 12345.0),
             displaySettings = DisplaySettings(DisplayMode.Sci(6))
         )
-        assertEquals("1.23450e+04", fmt.format(s))  // capped at 5 dp to fit 10-char display
+        // N=6 is within the cap of 7; sign slot is separate; no dp reduction needed
+        assertEquals(" 1.234500  04", fmt.format(s))
     }
 
     @Test fun eng0_boundary() {
@@ -417,7 +418,7 @@ class CalculatorEngineTest {
             stack = com.brocla.rpn_calc.logic.model.Stack(x = 12345.0),
             displaySettings = DisplaySettings(DisplayMode.Eng(0))
         )
-        assertEquals("12e+03", fmt.format(s))
+        assertEquals(" 12.       03", fmt.format(s))
     }
 
     // ---- A8 gap-fill: stack depth sequences / T-replication ----
@@ -500,6 +501,41 @@ class CalculatorEngineTest {
         // pressAllMode is a shifted function — deactivates
         s = engine.pressAllMode(s)
         assertFalse(s.shiftActive)
+    }
+
+    // ---- Format keys must commit entry ----
+
+    @Test fun fixArg_whileInEntry_commitsThenFormats() {
+        var s = engine.pressDigit(s(), 5)
+        assertTrue(s.entryState is EntryState.Standard)
+        s = engine.pressFixMode(s, 2)
+        assertEquals(EntryState.Idle, s.entryState)
+        assertEquals(5.0, s.stack.x)
+        assertEquals(DisplayMode.Fix(2), s.displaySettings.mode)
+    }
+
+    @Test fun sciArg_whileInEntry_commitsThenFormats() {
+        var s = engine.pressDigit(s(), 5)
+        s = engine.pressSciMode(s, 2)
+        assertEquals(EntryState.Idle, s.entryState)
+        assertEquals(5.0, s.stack.x)
+        assertEquals(DisplayMode.Sci(2), s.displaySettings.mode)
+    }
+
+    @Test fun engArg_whileInEntry_commitsThenFormats() {
+        var s = engine.pressDigit(s(), 5)
+        s = engine.pressEngMode(s, 2)
+        assertEquals(EntryState.Idle, s.entryState)
+        assertEquals(5.0, s.stack.x)
+        assertEquals(DisplayMode.Eng(2), s.displaySettings.mode)
+    }
+
+    @Test fun allMode_whileInEntry_commits() {
+        var s = engine.pressDigit(s(), 5)
+        s = engine.pressAllMode(s)
+        assertEquals(EntryState.Idle, s.entryState)
+        assertEquals(5.0, s.stack.x)
+        assertEquals(DisplayMode.All, s.displaySettings.mode)
     }
 
     // ---- A8 gap-fill: chained operations verify full stack ----

@@ -102,11 +102,12 @@ fun PortraitDisplayPanel(
             Text(
                 text = state.display,
                 style = DisplayTextStyle,
-                textAlign = TextAlign.End,
+                textAlign = TextAlign.Start,
                 maxLines = 1,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Bottom),
+                    .wrapContentHeight(Alignment.Bottom)
+                    .padding(bottom = 4.dp)
             )
         }
         AnimatedContent(
@@ -120,11 +121,12 @@ fun PortraitDisplayPanel(
             Text(
                 text = state.display,
                 style = DisplayTextStyle,
-                textAlign = TextAlign.End,
+                textAlign = TextAlign.Start,
                 maxLines = 1,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight(Alignment.Bottom),
+                    .wrapContentHeight(Alignment.Bottom)
+                    .padding(bottom = 8.dp)   // ← add this; adjust 4.dp to taste
             )
         }
     }

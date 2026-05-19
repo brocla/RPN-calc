@@ -12,6 +12,7 @@ sealed interface KeySlot {
         val keyDef: KeyDef,
         val weight: Float = 1f,
         val longPressEvent: CalcKeyEvent = CalcKeyEvent.NoOp,
+        val cornerRadius: Dp = 4.dp,
     ) : KeySlot
     data class Spacer(val weight: Float) : KeySlot
 }

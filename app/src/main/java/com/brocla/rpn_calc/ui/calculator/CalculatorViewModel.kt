@@ -90,10 +90,7 @@ class CalculatorViewModel @Inject constructor(
     }
 
     fun reset() {
-        val default = CalculatorState(
-            displaySettings = DisplaySettings(mode = DisplayMode.All),
-            angleMode       = AngleMode.DEG,
-        )
+        val default = CalculatorState()
         _uiState.value = CalculatorUiState(
             calcState      = default,
             displayString  = buildDisplay(default),

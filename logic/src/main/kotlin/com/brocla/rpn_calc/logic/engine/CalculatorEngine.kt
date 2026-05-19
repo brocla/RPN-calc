@@ -1,7 +1,7 @@
 package com.brocla.rpn_calc.logic.engine
 
-import com.brocla.rpn_calc.logic.display.DisplayFormatter
-import com.brocla.rpn_calc.logic.entry.EntryStateMachine
+import com.brocla.rpn_calc.logic.display.IDisplayFormatter
+import com.brocla.rpn_calc.logic.entry.IEntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.logic.model.AngleMode
 import com.brocla.rpn_calc.logic.model.CalcResult
@@ -11,9 +11,9 @@ import com.brocla.rpn_calc.logic.model.DisplaySettings
 import com.brocla.rpn_calc.logic.model.EntryState
 
 class CalculatorEngine(
-    private val entryStateMachine: EntryStateMachine,
+    private val entryStateMachine: IEntryStateMachine,
     private val mathOperations: MathOperations,
-    private val displayFormatter: DisplayFormatter
+    private val displayFormatter: IDisplayFormatter
 ) {
     // ---- Entry-level helpers ----
 
@@ -295,29 +295,25 @@ class CalculatorEngine(
     fun pressShift(state: CalculatorState): CalculatorState =
         state.copy(shiftActive = true)
 
-    fun pressFixMode(state: CalculatorState, decimalPlaces: Int): CalculatorState =
-        state.copy(
-            displaySettings = DisplaySettings(DisplayMode.Fix(decimalPlaces)),
-            shiftActive = false
-        )
+    fun pressFixMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
+        val s = clearErrorIfAny(commitEntry(state))
+        return s.copy(displaySettings = DisplaySettings(DisplayMode.Fix(decimalPlaces)), shiftActive = false)
+    }
 
-    fun pressSciMode(state: CalculatorState, decimalPlaces: Int): CalculatorState =
-        state.copy(
-            displaySettings = DisplaySettings(DisplayMode.Sci(decimalPlaces)),
-            shiftActive = false
-        )
+    fun pressSciMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
+        val s = clearErrorIfAny(commitEntry(state))
+        return s.copy(displaySettings = DisplaySettings(DisplayMode.Sci(decimalPlaces)), shiftActive = false)
+    }
 
-    fun pressEngMode(state: CalculatorState, decimalPlaces: Int): CalculatorState =
-        state.copy(
-            displaySettings = DisplaySettings(DisplayMode.Eng(decimalPlaces)),
-            shiftActive = false
-        )
+    fun pressEngMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
+        val s = clearErrorIfAny(commitEntry(state))
+        return s.copy(displaySettings = DisplaySettings(DisplayMode.Eng(decimalPlaces)), shiftActive = false)
+    }
 
-    fun pressAllMode(state: CalculatorState): CalculatorState =
-        state.copy(
-            displaySettings = DisplaySettings(DisplayMode.All),
-            shiftActive = false
-        )
+    fun pressAllMode(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(commitEntry(state))
+        return s.copy(displaySettings = DisplaySettings(DisplayMode.All), shiftActive = false)
+    }
 
     fun pressDegRad(state: CalculatorState): CalculatorState {
         val newMode = if (state.angleMode == AngleMode.DEG) AngleMode.RAD else AngleMode.DEG

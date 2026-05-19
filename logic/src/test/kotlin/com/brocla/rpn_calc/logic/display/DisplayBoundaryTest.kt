@@ -30,7 +30,12 @@ class DisplayBoundaryTest {
 
     private fun format(x: Double, mode: DisplayMode) = fmt.format(state(x, mode))
 
-    private fun displayWidth(s: String) = s.count { it != '.' && it != ',' }
+    // Returns true when the formatter has produced a 13-char SCI/ENG positional string.
+    private fun isSciEng(s: String) = s.length == 13
+
+    // Position 0 is always the sign slot (' ' or '-'); skip it when measuring digit width.
+    // Only valid for FIX/ALL strings (no internal spaces).
+    private fun displayWidth(s: String) = s.drop(1).count { it != '.' && it != ',' }
 
     // -------------------------------------------------------------------------
     // (1) Fix / All: 10-digit vs 11-digit integer part
@@ -40,7 +45,7 @@ class DisplayBoundaryTest {
     @Test fun fix_tenIntegerDigits_staysInFix() {
         val result = format(9_999_999_999.0, DisplayMode.Fix(2))
         println("fix_tenIntegerDigits: \"$result\"")
-        assertTrue(!result.contains('e'), "Expected Fix format (no 'e'), got: $result")
+        assertTrue(!isSciEng(result), "Expected Fix format (not 13-char SCI), got: $result")
         assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
     }
 
@@ -48,15 +53,14 @@ class DisplayBoundaryTest {
     @Test fun fix_elevenIntegerDigits_fallsBackToSci() {
         val result = format(10_000_000_000.0, DisplayMode.Fix(2))
         println("fix_elevenIntegerDigits: \"$result\"")
-        assertTrue(result.contains('e'), "Expected Sci fallback (contains 'e'), got: $result")
-        assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
+        assertTrue(isSciEng(result), "Expected Sci fallback (13-char format), got: $result")
     }
 
-    // Negative: -9_999_999_999 → 10 integer digits + sign = 11 total; Fix must fall back
+    // Negative: -9_999_999_999 → 10 integer digits; sign is in slot 0 (separate), so Fix fits
     @Test fun fix_negTenIntegerDigits_fallsBackToSci() {
         val result = format(-9_999_999_999.0, DisplayMode.Fix(2))
         println("fix_negTenIntegerDigits: \"$result\"")
-        assertTrue(result.contains('e'), "Expected Sci fallback for negative 10-digit integer, got: $result")
+        assertTrue(!isSciEng(result), "Expected Fix format (sign slot model; no SCI fallback), got: $result")
         assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
     }
 
@@ -64,7 +68,7 @@ class DisplayBoundaryTest {
     @Test fun fix_negNineIntegerDigits_staysInFix() {
         val result = format(-999_999_999.0, DisplayMode.Fix(0))
         println("fix_negNineIntegerDigits: \"$result\"")
-        assertTrue(!result.contains('e'), "Expected Fix format (no 'e'), got: $result")
+        assertTrue(!isSciEng(result), "Expected Fix format (not 13-char SCI), got: $result")
         assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
     }
 
@@ -73,9 +77,9 @@ class DisplayBoundaryTest {
         val value = 9_999_999_990.0
         val result = format(value, DisplayMode.All)
         println("all_tenIntegerDigits: \"$result\"")
-        assertTrue(!result.contains('e'), "Expected fixed notation (no 'e'), got: $result")
+        assertTrue(!isSciEng(result), "Expected fixed notation (not 13-char SCI), got: $result")
         assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
-        val parsed = result.replace(",", "").toDouble()
+        val parsed = result.trim().replace(",", "").toDouble()
         assertEquals(value, parsed, "Parsed value \"$result\" does not equal input $value")
     }
 
@@ -83,8 +87,7 @@ class DisplayBoundaryTest {
     @Test fun all_elevenIntegerDigits_fallsBackToSci() {
         val result = format(10_000_000_000.0, DisplayMode.All)
         println("all_elevenIntegerDigits: \"$result\"")
-        assertTrue(result.contains('e'), "Expected Sci fallback (contains 'e'), got: $result")
-        assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
+        assertTrue(isSciEng(result), "Expected Sci fallback (13-char format), got: $result")
     }
 
     // -------------------------------------------------------------------------
@@ -92,23 +95,22 @@ class DisplayBoundaryTest {
     // -------------------------------------------------------------------------
 
     // 1e+99 — exactly at the positive limit; must format normally
+    // SCI strings are 13 chars: result[10] = expSign (' '), result[11..12] = "99"
     @Test fun sci_exp99_positive_works() {
         val result = format(1e99, DisplayMode.Sci(2))
         println("sci_exp99_positive: \"$result\"")
-        assertTrue(!result.contains("rr") && !result.contains("ver"),
-            "Expected valid display, got error: $result")
-        assertTrue(result.contains("e+99"), "Expected exponent +99, got: $result")
-        assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
+        assertEquals(13, result.length, "Expected 13-char SCI format, got: $result")
+        assertEquals(' ', result[10], "Expected positive expSign at index 10, got: $result")
+        assertEquals("99", result.substring(11, 13), "Expected exponent 99, got: $result")
     }
 
     // 1e-99 — exactly at the negative limit; must format normally
     @Test fun sci_exp99_negative_works() {
         val result = format(1e-99, DisplayMode.Sci(2))
         println("sci_exp99_negative: \"$result\"")
-        assertTrue(!result.contains("rr") && !result.contains("ver"),
-            "Expected valid display, got error: $result")
-        assertTrue(result.contains("e-99"), "Expected exponent -99, got: $result")
-        assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
+        assertEquals(13, result.length, "Expected 13-char SCI format, got: $result")
+        assertEquals('-', result[10], "Expected negative expSign at index 10, got: $result")
+        assertEquals("99", result.substring(11, 13), "Expected exponent 99, got: $result")
     }
 
     // 1e+100 — one beyond positive limit; must return "Overflow"
@@ -133,23 +135,22 @@ class DisplayBoundaryTest {
     // -------------------------------------------------------------------------
 
     // 1e+99 — positive limit; must format normally
+    // ENG strings are 13 chars: result[10] = expSign (' '), result[11..12] = "99"
     @Test fun eng_exp99_positive_works() {
         val result = format(1e99, DisplayMode.Eng(2))
         println("eng_exp99_positive: \"$result\"")
-        assertTrue(!result.contains("rr") && !result.contains("ver"),
-            "Expected valid display, got error: $result")
-        assertTrue(result.contains("e+99"), "Expected exponent +99, got: $result")
-        assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
+        assertEquals(13, result.length, "Expected 13-char ENG format, got: $result")
+        assertEquals(' ', result[10], "Expected positive expSign at index 10, got: $result")
+        assertEquals("99", result.substring(11, 13), "Expected exponent 99, got: $result")
     }
 
     // 1e-99 — negative limit; must format normally
     @Test fun eng_exp99_negative_works() {
         val result = format(1e-99, DisplayMode.Eng(2))
         println("eng_exp99_negative: \"$result\"")
-        assertTrue(!result.contains("rr") && !result.contains("ver"),
-            "Expected valid display, got error: $result")
-        assertTrue(result.contains("e-99"), "Expected exponent -99, got: $result")
-        assertTrue(displayWidth(result) <= 10, "Width exceeded 10: $result")
+        assertEquals(13, result.length, "Expected 13-char ENG format, got: $result")
+        assertEquals('-', result[10], "Expected negative expSign at index 10, got: $result")
+        assertEquals("99", result.substring(11, 13), "Expected exponent 99, got: $result")
     }
 
     // 1e+102 — engExp becomes 102 (3 digits); must return "Overflow"
