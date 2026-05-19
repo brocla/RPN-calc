@@ -311,17 +311,17 @@ Examples after this change:
 - `Standard("5", isNegative=true)` → `"-5"`
 - `Standard("")` → `" 0"`
 
-### 7.2 Entry state: formatExponent — partial entry display [TDD V3]
+### 7.2 Entry state: formatExponent — positional display [TDD V1, V2]
 
-**Current behavior:** When `exponentDigits` is empty, `padStart(2, '0')` produces "00", giving "1 E00" even before any exponent digits have been typed.
+The exponent display uses a **positional format** — no `'E'` character appears anywhere in the output string. (See also the `formatExponent` doc comment in `DisplayFormatter.kt`: *"No 'E' character. No '+' for positive exponent."*) The mantissa occupies display positions 1–8, position 9 is the exponent sign (`' '` for positive, `'-'` for negative), and positions 10–11 are the two exponent digits.
 
-**Required behavior:** If `exponentDigits` is empty, omit the exponent digits entirely. Display as `"<mantissa> E"` (with trailing space before E and no digits after). If `exponentDigits` has one or two digits, pad to two with a leading zero as now.
+When `exponentDigits` is empty, positions 10–11 display `"00"` — the calculator is waiting for the first exponent digit. When one digit has been typed, it appears in position 11 with a leading zero in position 10. Two digits fill positions 10–11 directly.
 
-Apply the §7.0 sign-slot prefix rule. Examples after this change:
-- `Exponent("1", "", false, false, "", false)` → `" 1 E"`
-- `Exponent("1", "", false, false, "4", false)` → `" 1 E04"`
-- `Exponent("1", "23", true, false, "04", false)` → `" 1.23 E04"`
-- `Exponent("1", "", false, true, "5", true)` → `"-1 E-05"`
+Apply the §7.0 sign-slot prefix rule. Examples:
+- `Exponent("1", "", false, false, "", false)` → `" 1        00"` *(sign + "1" + 7 padding spaces + expSign ' ' + "00")*
+- `Exponent("1", "", false, false, "4", false)` → `" 1        04"`
+- `Exponent("1", "23", true, false, "04", false)` → `" 1.23      04"` *(sign + "1.23" + 5 spaces + expSign ' ' + "04")*
+- `Exponent("1", "", false, true, "5", true)` → `"-1       -05"` *(sign '-' + "1" + 7 spaces + expSign '-' + "05")*
 
 ### 7.3 Idle state: negative zero suppression [TDD B5, B6]
 
@@ -347,7 +347,7 @@ If `"%.0f".format(abs(v)).length > 10`, fall back to SCI. Current code checks `s
 
 **Zero-padding:** `"%.${cappedDp}e".format(v)` in Kotlin/JVM already pads trailing zeros in the mantissa. Verify the existing code does this; if the test S5 fails, the formatting call is being trimmed before output.
 
-**Zero display:** For `v=0.0, Sci(2)`, the result should be `"0.00e+00"`. The current code's zero branch constructs `"0.${"0".repeat(cappedDp)}e+00"`. Verify this produces the correct form.
+**Zero display:** For `v=0.0, Sci(2)`, the result should be `" 0.00     00"` (sign slot + "0.00" + 5 padding spaces + exponent sign ' ' + "00"). No `'e'` character — the exponent is positional. (See `formatSci` doc comment: *"No 'e' character."*)
 
 **Overflow/underflow:** Already detected (`if (absExp > 99) return if (expIsNegative) "Underflow" else "Overflow"`). Verify tests S7/S8 pass; the current code appears to handle this.
 
@@ -363,7 +363,7 @@ val cappedDp = minOf(dp, maxOf(0, maxFrac))
 
 The current code uses 10 as the position budget for ENG, which is wrong. Change 10 → 8 in the `maxDp` calculation.
 
-**Zero display:** Same structure as SCI. For `v=0.0, Eng(4)`, result should be `"0.0000e+00"`.
+**Zero display:** Same structure as SCI. For `v=0.0, Eng(4)`, result should be `" 0.0000   00"` (sign slot + "0.0000" + 3 padding spaces + exponent sign ' ' + "00"). No `'e'` character — positional format, same as SCI.
 
 **Overflow/underflow:** Already detected. Verify.
 

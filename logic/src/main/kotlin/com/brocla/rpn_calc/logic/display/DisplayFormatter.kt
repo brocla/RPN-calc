@@ -50,8 +50,8 @@ class DisplayFormatter : IDisplayFormatter {
         val paddingSpaces = maxOf(0, 8 - sigDigitCount)
         val expSign = if (es.exponentIsNegative) '-' else ' '
         val expStr = when (es.exponentDigits.length) {
-            0    -> "  "
-            1    -> "${es.exponentDigits[0]} "
+            0    -> "00"
+            1    -> "0${es.exponentDigits[0]}"
             else -> es.exponentDigits
         }
         return "$sign$mantissaContent${" ".repeat(paddingSpaces)}$expSign$expStr"
@@ -151,17 +151,30 @@ class DisplayFormatter : IDisplayFormatter {
         if (abs(engExp) > 99) return if (engExp < 0) "Underflow" else "Overflow"
 
         val mantissa = absV / 10.0.pow(engExp.toDouble())
-        val mantissaIntDigits = "%.0f".format(mantissa).length  // 1, 2, or 3
-
-        val maxFrac = (8 - mantissaIntDigits).coerceAtLeast(0)
+        // Use log10 for digit-count estimate — avoids rounding distortion from "%.0f".
+        val estimatedIntDigits = (floor(log10(mantissa)).toInt() + 1).coerceIn(1, 3)
+        val maxFrac = (8 - estimatedIntDigits).coerceAtLeast(0)
         val cappedDp = minOf(dp, maxFrac)
 
-        val mantissaStr = "%.${cappedDp}f".format(mantissa)
-        // Append "." for dp=0 (always show decimal point)
-        val sigStr = if (cappedDp == 0) "$mantissaStr." else mantissaStr
-        val paddingSpaces = 8 - mantissaIntDigits - cappedDp
-        val expSign = if (engExp < 0) '-' else ' '
-        val expStr = abs(engExp).toString().padStart(2, '0')
+        var mantissaStr = "%.${cappedDp}f".format(mantissa)
+        var finalEngExp = engExp
+
+        // If rounding pushed the mantissa past the tier boundary (e.g. 999.95 dp=1 → "1000.0"),
+        // step up one ENG tier and reformat. One retry is sufficient — the new mantissa is ~1.xxx.
+        if (mantissaStr.substringBefore('.').length > 3) {
+            finalEngExp += 3
+            if (abs(finalEngExp) > 99) return if (finalEngExp < 0) "Underflow" else "Overflow"
+            val newMantissa = absV / 10.0.pow(finalEngExp.toDouble())
+            val newCappedDp = minOf(dp, 7)  // 1 int digit after stepping up, so maxFrac = 7
+            mantissaStr = "%.${newCappedDp}f".format(newMantissa)
+        }
+
+        val actualIntDigits = mantissaStr.substringBefore('.').length
+        val actualFracDigits = mantissaStr.substringAfter('.', "").length
+        val sigStr = if (!mantissaStr.contains('.')) "$mantissaStr." else mantissaStr
+        val paddingSpaces = 8 - actualIntDigits - actualFracDigits
+        val expSign = if (finalEngExp < 0) '-' else ' '
+        val expStr = abs(finalEngExp).toString().padStart(2, '0')
         return "$sign$sigStr${" ".repeat(paddingSpaces)}$expSign$expStr"
     }
 

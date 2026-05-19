@@ -13,6 +13,8 @@ Test files:
 
 **Sign-slot note:** Per REQUIREMENTS_DISPLAY_REWRITE.md §7.0, every string returned by `DisplayFormatter.format()` starts with a sign-slot character: `" "` for non-negative, `"-"` for negative. Error strings have no sign slot. All expected values in this plan that show a formatted number must include this leading character in the actual test assertion. For brevity, the "Expected" column below omits it — prepend `" "` to all non-negative formatter outputs and `"-"` to all negative ones when writing the test code.
 
+**No 'e' or 'E' character:** All formatted output uses a **positional format** — no `'e'` or `'E'` character appears anywhere. (See `formatSci`, `formatEng`, and `formatExponent` doc comments in `DisplayFormatter.kt`.) SCI and ENG output is always 13 chars: sign(1) + significand + padding spaces + exponent-sign(1) + exponent-digits(2). Exponent entry display follows the same positional layout. Where this plan shows expected values like `"1.23e+04"` or `"1 E04"`, those were written before the positional format was established and must be read as the equivalent positional string (e.g. `" 1.23     04"`).
+
 ---
 
 ## A — Display positions: digit budget
@@ -22,13 +24,13 @@ These tests verify the 10-position digit budget (positions 1-10 in standard, 8 p
 | # | Test name | Input | Expected output | Status |
 |---|-----------|-------|-----------------|--------|
 | A1 | `fix2_tenDigitInteger` | x=1234567890.0, Fix(2) | "1,234,567,890" (no decimal, integer fills 10 slots) | [NEW-PASS] |
-| A2 | `fix2_elevenDigitInteger_fallsBackToSci` | x=12345678901.0, Fix(2) | contains "e" or "E" | [NEW-FAIL] — current code may not detect 11-digit int |
-| A3 | `sci7_capAt7FracDigits` | x=1.23456789, Sci(9) | "1.2345679e+00" (N capped at 7) | [NEW-FAIL] — cap not enforced |
-| A4 | `sci2_padWithZeros` | x=2.34, Sci(4) | "2.3400e+00" | [NEW-FAIL] — current fmt may not pad |
-| A5 | `eng_oneLead_noOverflow` | x=1.23, Eng(4) | "1.2300e+00" | [EXISTS] approx via eng2_units |
-| A6 | `eng_twoLeads` | x=12.3, Eng(4) | "12.300e+00" | [NEW-PASS] |
-| A7 | `eng_threeLeads` | x=123.4, Eng(4) | "123.40e+00" | [NEW-PASS] |
-| A8 | `eng_threeLeads_capDigits` | x=123.456789, Eng(4) | "123.46e+00" (total int+frac ≤ 8) | [NEW-FAIL] — digit cap for ENG not enforced |
+| A2 | `fix2_elevenDigitInteger_fallsBackToSci` | x=12345678901.0, Fix(2) | falls back to SCI positional format (13 chars, no 'e') | [NEW-FAIL] — current code may not detect 11-digit int |
+| A3 | `sci7_capAt7FracDigits` | x=1.23456789, Sci(9) | `" 1.2345679 00"` (N capped at 7; 13 chars) | [NEW-FAIL] — cap not enforced |
+| A4 | `sci2_padWithZeros` | x=2.34, Sci(4) | `" 2.3400   00"` (13 chars) | [NEW-FAIL] — current fmt may not pad |
+| A5 | `eng_oneLead_noOverflow` | x=1.23, Eng(4) | `" 1.2300   00"` (13 chars) | [EXISTS] approx via eng2_units |
+| A6 | `eng_twoLeads` | x=12.3, Eng(4) | `" 12.3000  00"` (13 chars) | [NEW-PASS] |
+| A7 | `eng_threeLeads` | x=123.4, Eng(4) | `" 123.4000 00"` (13 chars) | [NEW-PASS] |
+| A8 | `eng_threeLeads_capDigits` | x=123.456789, Eng(4) | `" 123.4568 00"` (total int+frac ≤ 8; 13 chars) | [NEW-FAIL] — digit cap for ENG not enforced |
 
 ---
 
@@ -42,8 +44,8 @@ The sign occupies position 0 and must never consume a digit slot. Tests on Idle-
 | B2 | `fix2_negative_tenDigitInteger` | x=-1234567890.0, Fix(2) | "-1,234,567,890" | [NEW-PASS] |
 | B3 | `sci2_negative_exponent` | x=-1.23e4, Sci(2) | "-1.23e+04" | [EXISTS] via sci2_negative |
 | B4 | `negativeZero_noSign` | x=-0.0, Fix(2) | "0.00" (no negative sign on zero) | [EXISTS] via negativeZero_fix2 |
-| B5 | `negativeZero_sci` | x=-0.0, Sci(2) | "0.00e+00" | [NEW-FAIL] — negative-zero guard may be missing in SCI branch |
-| B6 | `negativeZero_all` | x=-0.0, All | "0" | [NEW-FAIL] — negative-zero guard may be missing in ALL branch |
+| B5 | `negativeZero_sci` | x=-0.0, Sci(2) | `" 0.00     00"` (sign slot is space, not minus) | [NEW-FAIL] — negative-zero guard may be missing in SCI branch |
+| B6 | `negativeZero_all` | x=-0.0, All | `" 0"` (sign slot is space, not minus) | [NEW-FAIL] — negative-zero guard may be missing in ALL branch |
 
 ---
 
@@ -76,7 +78,7 @@ EEX from Idle puts "1" in mantissa int-part and jumps straight to Exponent state
 | # | Test name | Input | Expected | Status |
 |---|-----------|-------|----------|--------|
 | E1 | `eex_fromIdle_startsExponent` | idle + pressEex | Exponent(mantissaIntPart="1", exponentDigits="") | [EXISTS] via eex_fromIdle |
-| E2 | `eex_fromIdle_displayShowsOneE` | format state from E1 | "1 E" (no exponent digits yet) | [NEW-FAIL] — current display may not render exponent entry state correctly in all cases |
+| E2 | `eex_fromIdle_displayShowsOneE` | format state from E1 | `" 1        00"` (positional: sign + "1" + 7 spaces + expSign ' ' + "00"; no 'E' character) | [NEW-PASS] — current code uses positional format |
 
 ---
 
@@ -164,7 +166,7 @@ DegRad is a no-op on the display (numeric content unchanged); it only toggles th
 | L1 | `eExpDigit_firstDigit` | Exponent(eDigits="") + press 4 | exponentDigits="4" | [NEW-PASS] |
 | L2 | `eExpDigit_secondDigit` | Exponent(eDigits="4") + press 2 | exponentDigits="42" | [NEW-PASS] |
 | L3 | `eExpDigit_thirdDigit_noop` | Exponent(eDigits="42") + press 1 | exponentDigits stays "42" | [NEW-FAIL] — cap at 2 exp digits not enforced |
-| L4 | `eExpDigit_displayShowsTwoDigitExp` | format Exponent("1","",false,false,"04",false) | "1 E04" | [EXISTS] via entry_exponent |
+| L4 | `eExpDigit_displayShowsTwoDigitExp` | format Exponent("1","",false,false,"04",false) | `" 1        04"` (positional; no 'E') | [EXISTS] via entry_exponent |
 
 ---
 
@@ -188,7 +190,7 @@ CHS in Exponent mode toggles the exponent sign (position 9).
 |---|-----------|-------|----------|--------|
 | N1 | `chs_exponentPositive_toNeg` | Exponent(eNeg=false) + pressChs | exponentIsNegative=true | [EXISTS] via chs_exponent_positive |
 | N2 | `chs_exponentNegative_toPos` | Exponent(eNeg=true) + pressChs | exponentIsNegative=false | [EXISTS] via chs_exponent_negative |
-| N3 | `chs_exponentNeg_displayShowsMinus` | format Exponent("1","",false,false,"5",true) | "1 E-05" | [EXISTS] via entry_negExp |
+| N3 | `chs_exponentNeg_displayShowsMinus` | format Exponent("1","",false,false,"5",true) | `"-1       -05"` (positional; no 'E'; sign '-' at pos 0, expSign '-' at pos 9) | [EXISTS] via entry_negExp |
 
 ---
 
@@ -240,10 +242,10 @@ If N fractional slots cannot show at least one significant digit, fall back to S
 | R1 | `fix2_normal_rounded` | x=3.14159, Fix(2) | "3.14" | [EXISTS] via fix2_normal |
 | R2 | `fix2_zero` | x=0.0, Fix(2) | "0.00" | [EXISTS] via fix2_zero |
 | R3 | `fix0_integerRound` | x=3.7, Fix(0) | "4" | [EXISTS] via fix0_rounds |
-| R4 | `fix2_large_fallsBackToSci` | x=1.23e15, Fix(2) | contains "e"/"E" | [EXISTS] via fix2_largeOverflow |
-| R5 | `fix2_verySmall_fallsBackToSci` | x=1.23e-15, Fix(2) | contains "e"/"E" | [EXISTS] via fix2_tooSmallOverflow |
+| R4 | `fix2_large_fallsBackToSci` | x=1.23e15, Fix(2) | SCI positional format (13 chars, no 'e') | [EXISTS] via fix2_largeOverflow |
+| R5 | `fix2_verySmall_fallsBackToSci` | x=1.23e-15, Fix(2) | SCI positional format (13 chars, no 'e') | [EXISTS] via fix2_tooSmallOverflow |
 | R6 | ~~`fix2_borderSmall_noFallback`~~ | ~~x=0.001, Fix(2)~~ | ~~"0.001"~~ | **DELETE** — contradicts strict-fixed behavior; replaced by R7 |
-| R7 | `fix2_noSignificantDigit_fallsBack` | x=0.001, Fix(2) | contains "e"/"E" (SCI fallback, "0.00" shows no sig digit) | [NEW-FAIL] |
+| R7 | `fix2_noSignificantDigit_fallsBack` | x=0.001, Fix(2) | SCI positional format (13 chars, no 'e'; "0.00" shows no sig digit so falls back) | [NEW-FAIL] |
 | R8 | `fix0_noLeadingZeros_singleZero` | x=0.0, Fix(0) | "0" | [NEW-PASS] |
 | R9 | `fix4_tenDigitInteger_noDecimal` | x=1234567890.0, Fix(4) | "1,234,567,890" (no room for frac, rounds off) | [NEW-FAIL] — may not handle 10-digit int correctly |
 
@@ -253,15 +255,15 @@ If N fractional slots cannot show at least one significant digit, fall back to S
 
 | # | Test name | Input | Expected | Status |
 |---|-----------|-------|----------|--------|
-| S1 | `sci2_normal` | x=12345.0, Sci(2) | "1.23e+04" | [EXISTS] via sci2_normal |
-| S2 | `sci0_normal` | x=12345.0, Sci(0) | "1e+04" | [EXISTS] via sci0_normal |
-| S3 | `sci2_zero` | x=0.0, Sci(2) | "0.00      00" (sig + two-digit exp) | [NEW-FAIL] — see zeros table |
-| S4 | `sci7_capN` | x=1.23456789, Sci(9) | N capped to 7: "1.2345679e+00" | [NEW-FAIL] — cap missing |
-| S5 | `sci2_padWithZeros` | x=2.34, Sci(4) | "2.3400e+00" | [NEW-FAIL] — padding missing |
-| S6 | `sci0_roundLeft` | x=299792458.0, Sci(0) | "3e+08" | [NEW-PASS] |
+| S1 | `sci2_normal` | x=12345.0, Sci(2) | `" 1.23     04"` (13 chars; no 'e') | [EXISTS] via sci2_normal |
+| S2 | `sci0_normal` | x=12345.0, Sci(0) | `" 1.       04"` (13 chars; dot always shown; no 'e') | [EXISTS] via sci0_normal |
+| S3 | `sci2_zero` | x=0.0, Sci(2) | `" 0.00     00"` (13 chars) | [NEW-FAIL] — see zeros table |
+| S4 | `sci7_capN` | x=1.23456789, Sci(9) | `" 1.2345679 00"` (N capped at 7; 13 chars) | [NEW-FAIL] — cap missing |
+| S5 | `sci2_padWithZeros` | x=2.34, Sci(4) | `" 2.3400   00"` (13 chars) | [NEW-FAIL] — padding missing |
+| S6 | `sci0_roundLeft` | x=299792458.0, Sci(0) | `" 3.       08"` (13 chars; dot always shown) | [NEW-PASS] |
 | S7 | `sci2_exponentGt99_overflow` | x=1e100, Sci(2) | error state | [NEW-FAIL] — overflow not detected |
 | S8 | `sci2_exponentLtNeg99_underflow` | x=1e-100, Sci(2) | error state | [NEW-FAIL] — underflow not detected |
-| S9 | `sci2_exactlyOne` | x=1.0, Sci(2) | "1.00e+00" | [EXISTS] via sci2_exactlyOne |
+| S9 | `sci2_exactlyOne` | x=1.0, Sci(2) | `" 1.00     00"` (13 chars) | [EXISTS] via sci2_exactlyOne |
 
 ---
 
@@ -269,12 +271,12 @@ If N fractional slots cannot show at least one significant digit, fall back to S
 
 | # | Test name | Input | Expected | Status |
 |---|-----------|-------|----------|--------|
-| T1 | `eng2_thousands` | x=12345.0, Eng(2) | "12.35e+03" | [EXISTS] via eng2_thousands |
-| T2 | `eng2_millions` | x=1234567.0, Eng(2) | "1.23e+06" | [EXISTS] via eng2_millions |
-| T3 | `eng2_units` | x=1.23, Eng(2) | "1.23e+00" | [EXISTS] via eng2_units |
-| T4 | `eng2_small` | x=0.00123, Eng(2) | "1.23e-03" | [EXISTS] via eng2_small |
-| T5 | `eng4_threeLeads_digitCap` | x=123.456789, Eng(4) | "123.46e+00" (int+frac ≤ 8) | [NEW-FAIL] — digit cap not enforced |
-| T6 | `eng2_zero` | x=0.0, Eng(4) | "0.0000      00" | [NEW-FAIL] — zeros table |
+| T1 | `eng2_thousands` | x=12345.0, Eng(2) | `" 12.35    03"` (13 chars; no 'e') | [EXISTS] via eng2_thousands |
+| T2 | `eng2_millions` | x=1234567.0, Eng(2) | `" 1.23     06"` (13 chars) | [EXISTS] via eng2_millions |
+| T3 | `eng2_units` | x=1.23, Eng(2) | `" 1.23     00"` (13 chars) | [EXISTS] via eng2_units |
+| T4 | `eng2_small` | x=0.00123, Eng(2) | `" 1.23    -03"` (13 chars; expSign '-' at pos 9) | [EXISTS] via eng2_small |
+| T5 | `eng4_threeLeads_digitCap` | x=123.456789, Eng(4) | `" 123.4568 00"` (13 chars; int+frac=7 ≤ 8) | [NEW-FAIL] — digit cap not enforced |
+| T6 | `eng2_zero` | x=0.0, Eng(4) | `" 0.0000   00"` (13 chars) | [NEW-FAIL] — zeros table |
 | T7 | `eng2_exponentGt99_overflow` | x=1e100, Eng(2) | error state | [NEW-FAIL] |
 | T8 | `eng2_exponentLtNeg99_underflow` | x=1e-100, Eng(2) | error state | [NEW-FAIL] |
 
@@ -301,10 +303,10 @@ During EEX entry the significand uses positions 1-8 and exponent uses 9-11. Curr
 
 | # | Test name | Input | Expected | Status |
 |---|-----------|-------|----------|--------|
-| V1 | `entryExponent_alwaysShowsRawDigits` | Exponent("1","23",true,false,"04",false), Fix(4) | "1.23 E04" | [EXISTS] via entry_exponent — passes but ignores Fix(4) |
-| V2 | `entryExponent_negativeExp_display` | Exponent("1","",false,false,"5",true), Fix(2) | "1 E-05" | [EXISTS] via entry_negExp |
-| V3 | `entryExponent_emptyExp_noTrailingE` | Exponent("3","14",true,false,"",false), any mode | "3.14 E" | [NEW-FAIL] — display during partial EEX entry (before any exp digit) |
-| V4 | `entryExponent_respects8SigPositions` | Exponent("12345678","",false,false,"02",false), any | "12345678 E02" (8 sig digits fit) | [NEW-FAIL] — no guard enforced during display |
+| V1 | `entryExponent_alwaysShowsRawDigits` | Exponent("1","23",true,false,"04",false), Fix(4) | `" 1.23      04"` (positional; no 'E'; 13 chars) | [EXISTS] via entry_exponent — passes but ignores Fix(4) |
+| V2 | `entryExponent_negativeExp_display` | Exponent("1","",false,false,"5",true) | `"-1       -05"` (positional; no 'E'; expSign '-' at pos 9) | [EXISTS] via entry_negExp |
+| V3 | `entryExponent_emptyExp_noTrailingE` | Exponent("3","14",true,false,"",false), any mode | `" 3.14      00"` (positional; "00" shown before any exp digit typed; no 'E') | [NEW-PASS] — current code uses positional format with "00" |
+| V4 | `entryExponent_respects8SigPositions` | Exponent("12345678","",false,false,"02",false), any | `" 12345678 02"` (8 sig digits fill positions 1–8; no 'E') | [NEW-FAIL] — no guard enforced during display |
 
 ---
 
@@ -315,8 +317,8 @@ Per Notes: zero in each format.
 | # | Format | Expected string | Status |
 |---|--------|-----------------|--------|
 | W1 | Fix(3) | "0.000" | [NEW-PASS] |
-| W2 | Sci(2) | "0.00e+00" | [NEW-FAIL] — current Sci(2) zero output unconfirmed |
-| W3 | Eng(4) | "0.0000e+00" | [NEW-FAIL] |
+| W2 | Sci(2) | `" 0.00     00"` (13 chars; no 'e') | [NEW-FAIL] — current Sci(2) zero output unconfirmed |
+| W3 | Eng(4) | `" 0.0000   00"` (13 chars; no 'e') | [NEW-FAIL] |
 | W4 | All    | "0" | [NEW-PASS] |
 
 ---
