@@ -3,6 +3,7 @@ package com.brocla.rpn_calc.ui.calculator
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.brocla.rpn_calc.data.CalcStateRepository
+import com.brocla.rpn_calc.logic.display.DisplayResult
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.model.CalculatorState
 import com.brocla.rpn_calc.logic.model.EntryState
@@ -219,14 +220,15 @@ class CalculatorViewModel @Inject constructor(
         insertThousandsCommas(engine.getDisplay(cs), cs.displaySettings.mode, cs.entryState)
 
     /**
-     * If the display string is a range error ("Overflow"/"Underflow"), promote it
+     * If the engine reports a display range error (exponent > ±99), promote it
      * into state.error so the VM's key-tap error-clearing logic handles it.
      */
     private fun finalizeState(cs: CalculatorState): CalculatorState {
         if (cs.error != null) return cs
-        val display = engine.getDisplay(cs)
-        return if (display == "Overflow" || display == "Underflow") cs.copy(error = display)
-        else cs
+        return when (val r = engine.getDisplayResult(cs)) {
+            is DisplayResult.RangeError -> cs.copy(error = r.label)
+            is DisplayResult.Text       -> cs
+        }
     }
 
     private fun buildYDisplay(cs: CalculatorState): String =

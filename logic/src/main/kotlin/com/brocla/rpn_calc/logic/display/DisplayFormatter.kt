@@ -10,13 +10,20 @@ import kotlin.math.pow
 
 class DisplayFormatter : IDisplayFormatter {
 
-    override fun format(state: CalculatorState): String {
-        state.error?.let { return it }  // errors: no sign slot
+    override fun formatResult(state: CalculatorState): DisplayResult {
+        state.error?.let { return DisplayResult.Text(it) }  // errors: no sign slot
 
-        return when (val es = state.entryState) {
+        val s = when (val es = state.entryState) {
             is EntryState.Idle     -> formatValue(state.stack.x, state.displaySettings.mode)
             is EntryState.Standard -> formatStandard(es)
             is EntryState.Exponent -> formatExponent(es)
+        }
+        // "Overflow"/"Underflow" are sentinel strings returned by formatSci/formatEng when the
+        // exponent exceeds ±99. Promote them to typed values here so they never escape this class.
+        return when (s) {
+            "Overflow"  -> DisplayResult.RangeError.Overflow
+            "Underflow" -> DisplayResult.RangeError.Underflow
+            else        -> DisplayResult.Text(s)
         }
     }
 

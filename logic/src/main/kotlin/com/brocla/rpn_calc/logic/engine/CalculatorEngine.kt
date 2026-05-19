@@ -1,5 +1,6 @@
 package com.brocla.rpn_calc.logic.engine
 
+import com.brocla.rpn_calc.logic.display.DisplayResult
 import com.brocla.rpn_calc.logic.display.IDisplayFormatter
 import com.brocla.rpn_calc.logic.entry.IEntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
@@ -334,5 +335,12 @@ class CalculatorEngine(
 
     // ---- Display ----
 
-    fun getDisplay(state: CalculatorState): String = displayFormatter.format(state)
+    fun getDisplayResult(state: CalculatorState): DisplayResult =
+        displayFormatter.formatResult(state)
+
+    fun getDisplay(state: CalculatorState): String =
+        when (val r = getDisplayResult(state)) {
+            is DisplayResult.Text       -> r.string
+            is DisplayResult.RangeError -> r.label
+        }
 }
