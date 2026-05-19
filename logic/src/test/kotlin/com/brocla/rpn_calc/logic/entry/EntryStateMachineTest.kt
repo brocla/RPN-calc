@@ -139,15 +139,13 @@ class EntryStateMachineTest {
     // than 8 significant digits, the mantissa must be truncated to 8 to leave room
     // for the exponent at positions 9–11.
     //
-    // Case A — pure integer, 9 digits: guard currently returns state unchanged (no-op).
-    // [RED until fix]
+    // Case A — pure integer, 9 digits.
     @Test fun eex_nineIntegerDigits_transitionsToExponent() {
         val s = esm.pressEex(idle.copy(entryState = mantissa("123456789")))
         assertTrue(s.entryState is EntryState.Exponent,
             "EEX with 9 integer digits must transition to Exponent; stayed Standard")
     }
 
-    // [RED until fix]
     @Test fun eex_nineIntegerDigits_truncatesTo8() {
         val s = esm.pressEex(idle.copy(entryState = mantissa("123456789")))
         val es = s.entryState as EntryState.Exponent
@@ -156,15 +154,13 @@ class EntryStateMachineTest {
         assertEquals("", es.mantissaFracPart)
     }
 
-    // Case B — pure integer, 10 digits: same guard blocks transition.
-    // [RED until fix]
+    // Case B — pure integer, 10 digits.
     @Test fun eex_tenIntegerDigits_transitionsToExponent() {
         val s = esm.pressEex(idle.copy(entryState = mantissa("1234567890")))
         assertTrue(s.entryState is EntryState.Exponent,
             "EEX with 10 integer digits must transition to Exponent; stayed Standard")
     }
 
-    // [RED until fix]
     @Test fun eex_tenIntegerDigits_truncatesTo8() {
         val s = esm.pressEex(idle.copy(entryState = mantissa("1234567890")))
         val es = s.entryState as EntryState.Exponent
@@ -173,9 +169,7 @@ class EntryStateMachineTest {
         assertEquals("", es.mantissaFracPart)
     }
 
-    // Case C — 7 integer + 2 frac = 9 total digits: guard passes (int < 8) but
-    // formatter overflows because sigDigitCount = 9 > 8.
-    // [RED until fix]
+    // Case C — 7 integer + 2 frac = 9 total digits.
     @Test fun eex_sevenIntTwoFrac_truncatesFracTo1() {
         val s = esm.pressEex(idle.copy(entryState = mantissa("1234567", "89", hasDecimal = true)))
         val es = s.entryState as EntryState.Exponent
