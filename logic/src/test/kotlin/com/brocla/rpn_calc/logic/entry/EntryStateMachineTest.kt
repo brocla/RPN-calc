@@ -111,6 +111,22 @@ class EntryStateMachineTest {
         assertFalse(es.exponentIsNegative)
     }
 
+    // Pressing . then a digit then EEX: mantissa digits="" but fracDigits is non-empty.
+    // mantissaIntPart must be "0", not "" (which formatExponent/parseExponent treat as "1").
+    @Test fun eex_fromDecimalOnlyMantissa_intPartIsZero() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("", "2", hasDecimal = true)))
+        val es = s.entryState as EntryState.Exponent
+        assertEquals("0", es.mantissaIntPart,
+            "mantissaIntPart must be \"0\" when decimal was entered before any integer digit")
+    }
+
+    @Test fun eex_fromDecimalOnlyMantissa_parsedValueIsCorrect() {
+        val s = esm.pressEex(idle.copy(entryState = mantissa("", "2", hasDecimal = true)))
+        val value = esm.currentDisplayValue(s)
+        assertEquals(0.2, value,
+            "'. 2 EEX' must parse as 0.2, not 1.2")
+    }
+
     @Test fun eex_fromIdle() {
         val s = esm.pressEex(idle)
         val es = s.entryState as EntryState.Exponent
