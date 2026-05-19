@@ -20,6 +20,9 @@ class KeyDef(
     val primaryLineHeight: TextUnit = TextUnit.Unspecified,
     val customLabel: (@Composable (color: Color, fontSize: TextUnit) -> Unit)? = null,
 ) {
+    // customLabel is intentionally excluded from equals/hashCode:
+    // lambdas have no structural equality on the JVM, so including it would
+    // make every KeyDef with a custom label always unequal and defeat Compose skip-recomposition.
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is KeyDef) return false

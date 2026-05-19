@@ -64,6 +64,8 @@ class EntryStateMachine : IEntryStateMachine {
                 if (isZero) state
                 else state.copy(entryState = es.copy(isNegative = !es.isNegative))
             }
+            // Once in Exponent entry, CHS always toggles the exponent sign.
+            // To change the mantissa sign, backspace out of Exponent mode first.
             is EntryState.Exponent -> state.copy(entryState = es.copy(exponentIsNegative = !es.exponentIsNegative))
             is EntryState.Idle -> state  // handled by CalculatorEngine
         }
