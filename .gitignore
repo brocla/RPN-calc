@@ -15,6 +15,7 @@
 local.properties
 .claude/
 artwork/*
+/doc/
 /.idea/misc.xml
 /.idea/inspectionProfiles/
 .idea/misc.xml
