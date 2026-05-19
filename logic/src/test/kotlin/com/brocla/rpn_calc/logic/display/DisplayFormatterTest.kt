@@ -88,7 +88,7 @@ class DisplayFormatterTest {
     )
 
     @Test fun entry_negExp() = assertEquals(
-        " 1       -5 ",
+        " 1       -05",
         fmt.format(entryState(EntryState.Exponent("1", "", false, false, "5", true)))
     )
 }

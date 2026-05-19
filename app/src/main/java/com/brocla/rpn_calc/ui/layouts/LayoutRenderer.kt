@@ -30,6 +30,7 @@ fun LayoutRenderer(
                                 onKey = onKey,
                                 modifier = Modifier.weight(slot.weight).fillMaxHeight(),
                                 primaryTopPadding = row.primaryTopPadding,
+                                cornerRadius = slot.cornerRadius,
                                 onLongPress = if (slot.longPressEvent != CalcKeyEvent.NoOp)
                                     { { onKey(slot.longPressEvent) } } else null,
                             )

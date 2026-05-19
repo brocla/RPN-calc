@@ -43,19 +43,19 @@ class DisplayFormatterSpec {
     // No 'E' character. expStr: 0 digits → "  ", 1 digit → "d ", 2 digits → "dd"
 
     @Test fun formatExponent_noExpDigits_showsTrailingE() =
-        assertEquals(" 1          ", fmt.format(entryState(EntryState.Exponent("1", "", false, false, "", false))))
+        assertEquals(" 1        00", fmt.format(entryState(EntryState.Exponent("1", "", false, false, "", false))))
 
     @Test fun formatExponent_oneExpDigit_padded() =
-        assertEquals(" 1        4 ", fmt.format(entryState(EntryState.Exponent("1", "", false, false, "4", false))))
+        assertEquals(" 1        04", fmt.format(entryState(EntryState.Exponent("1", "", false, false, "4", false))))
 
     @Test fun formatExponent_twoExpDigits() =
         assertEquals(" 1.23      04", fmt.format(entryState(EntryState.Exponent("1", "23", true, false, "04", false))))
 
     @Test fun formatExponent_negativeExp() =
-        assertEquals(" 1       -5 ", fmt.format(entryState(EntryState.Exponent("1", "", false, false, "5", true))))
+        assertEquals(" 1       -05", fmt.format(entryState(EntryState.Exponent("1", "", false, false, "5", true))))
 
     @Test fun formatExponent_negativeMantissa() =
-        assertEquals("-1        5 ", fmt.format(entryState(EntryState.Exponent("1", "", false, true, "5", false))))
+        assertEquals("-1        05", fmt.format(entryState(EntryState.Exponent("1", "", false, true, "5", false))))
 
     // ── O3: Sign-slot prefix — FIX idle ──────────────────────────────────────
 

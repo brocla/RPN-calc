@@ -52,7 +52,7 @@ private val portRow3 = KeyRow(listOf(
         event        = CalcKeyEvent.Shift,
         keyColor     = CalcColors.KeyShift,
         labelColor   = CalcColors.LabelShiftKey,
-    )),
+    ), cornerRadius = 12.dp),
     KeySlot.Key(KeyDef("x↔y", "ALL", CalcKeyEvent.Swap, CalcKeyEvent.AllMode)),
     KeySlot.Key(KeyDef("R▼",  "FIX",    CalcKeyEvent.RollDown, CalcKeyEvent.FixArg)), //↓
     KeySlot.Key(KeyDef("STO", "SCI", CalcKeyEvent.Sto, CalcKeyEvent.SciArg)),

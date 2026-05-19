@@ -40,6 +40,7 @@ fun CalcKey(
     onKey: (CalcKeyEvent) -> Unit,
     modifier: Modifier = Modifier,
     primaryTopPadding: Dp = 0.dp,
+    cornerRadius: Dp = 4.dp,
     onLongPress: (() -> Unit)? = null,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -52,7 +53,7 @@ fun CalcKey(
     }
 
     val bgColor = if (isPressed) CalcColors.KeyPressed else def.keyColor
-    val shape = RoundedCornerShape(4.dp)
+    val shape = RoundedCornerShape(cornerRadius)
 
     Box(
         modifier = modifier

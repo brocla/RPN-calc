@@ -18,3 +18,5 @@ artwork/*
 /.idea/misc.xml
 /.idea/inspectionProfiles/
 .idea/misc.xml
+logic/*.log
+*.log

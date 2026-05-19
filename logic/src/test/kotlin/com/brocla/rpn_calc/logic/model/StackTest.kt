@@ -26,10 +26,10 @@ class StackTest {
         assertEquals(AngleMode.DEG, CalculatorState().angleMode)
     }
 
-    @Test fun defaultCalculatorState_displayIsFixFour() {
+    @Test fun defaultCalculatorState_displayIsFixFive() {
         val mode = CalculatorState().displaySettings.mode
         assertTrue(mode is DisplayMode.Fix)
-        assertEquals(4, (mode as DisplayMode.Fix).decimalPlaces)
+        assertEquals(5, (mode as DisplayMode.Fix).decimalPlaces)
     }
 
     @Test fun defaultCalculatorState_memoryAllZero() {
