@@ -370,7 +370,7 @@ class CalculatorViewModelTest {
         key(CalcKeyEvent.FixArg)
         key(CalcKeyEvent.Digit(4))
         vm.reset()
-        assertTrue(state.displaySettings.mode is DisplayMode.All)
+        assertTrue(state.displaySettings.mode is DisplayMode.Fix)
     }
 
     @Test
