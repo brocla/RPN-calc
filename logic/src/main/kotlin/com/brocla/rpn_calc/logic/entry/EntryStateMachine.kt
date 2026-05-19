@@ -95,7 +95,7 @@ class EntryStateMachine : IEntryStateMachine {
                     val truncatedFrac = es.fracDigits.take(maxFrac)
                     state.copy(
                         entryState = EntryState.Exponent(
-                            mantissaIntPart = es.digits.take(8),
+                            mantissaIntPart = es.digits.ifEmpty { "0" }.take(8),
                             mantissaFracPart = truncatedFrac,
                             mantissaHasDecimal = es.hasDecimal,
                             mantissaIsNegative = es.isNegative,
