@@ -1,6 +1,7 @@
 package com.brocla.rpn_calc.logic.entry
 
 import com.brocla.rpn_calc.logic.model.CalculatorState
+import kotlin.math.pow
 import com.brocla.rpn_calc.logic.model.EntryState
 
 class EntryStateMachine : IEntryStateMachine {
@@ -203,6 +204,6 @@ class EntryStateMachine : IEntryStateMachine {
         val expStr = es.exponentDigits.ifEmpty { "0" }
         val exp = expStr.toIntOrNull() ?: 0
         val expSigned = if (es.exponentIsNegative) -exp else exp
-        return signedMantissa * Math.pow(10.0, expSigned.toDouble())
+        return signedMantissa * 10.0.pow(expSigned.toDouble())
     }
 }
