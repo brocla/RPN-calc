@@ -51,7 +51,7 @@ object CalculatorModule {
     @Provides @Singleton
     fun provideCalcStateRepository(
         dataStore: DataStore<Preferences>,
-        entryStateMachine: EntryStateMachine,
+        entryStateMachine: IEntryStateMachine,
     ): CalcStateRepository = CalcStateRepository(dataStore, entryStateMachine)
 }
 

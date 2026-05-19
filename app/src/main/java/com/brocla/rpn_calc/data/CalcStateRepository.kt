@@ -4,7 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.brocla.rpn_calc.logic.entry.EntryStateMachine
+import com.brocla.rpn_calc.logic.entry.IEntryStateMachine
 import com.brocla.rpn_calc.logic.model.CalculatorState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -18,7 +18,7 @@ object CalcPersistenceKeys {
 
 class CalcStateRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
-    private val entryStateMachine: EntryStateMachine,
+    private val entryStateMachine: IEntryStateMachine,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 

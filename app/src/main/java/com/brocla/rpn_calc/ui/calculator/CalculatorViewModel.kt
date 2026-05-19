@@ -4,10 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.brocla.rpn_calc.data.CalcStateRepository
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
-import com.brocla.rpn_calc.logic.model.AngleMode
 import com.brocla.rpn_calc.logic.model.CalculatorState
-import com.brocla.rpn_calc.logic.model.DisplayMode
-import com.brocla.rpn_calc.logic.model.DisplaySettings
 import com.brocla.rpn_calc.logic.model.EntryState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,17 +21,23 @@ class CalculatorViewModel @Inject constructor(
     private val clipboardParser: ClipboardParser,
 ) : ViewModel() {
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     private val _uiState = MutableStateFlow(defaultUiState())
     val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
 
     init {
-        val saved = runBlocking { repository.calcState.first() }
-        if (saved != null) {
-            _uiState.value = CalculatorUiState(
-                calcState      = saved,
-                displayString  = buildDisplay(saved),
-                yDisplayString = buildYDisplay(saved),
-            )
+        viewModelScope.launch {
+            val saved = repository.calcState.first()
+            if (saved != null) {
+                _uiState.value = CalculatorUiState(
+                    calcState      = saved,
+                    displayString  = buildDisplay(saved),
+                    yDisplayString = buildYDisplay(saved),
+                )
+            }
+            _isLoading.value = false
         }
     }
 
