@@ -60,7 +60,7 @@ class DisplayFormatter : IDisplayFormatter {
     // ── Idle state formatting ─────────────────────────────────────────────────
 
     private fun formatValue(value: Double, mode: DisplayMode): String {
-        val v = if (value == 0.0) 0.0 else value  // collapse -0.0
+        val v = value + 0.0  // collapse -0.0 → 0.0 so negative sign never appears before zero
         return when (mode) {
             is DisplayMode.Fix -> formatFix(v, mode.decimalPlaces)
             is DisplayMode.Sci -> formatSci(v, mode.decimalPlaces)

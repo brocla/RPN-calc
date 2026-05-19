@@ -196,23 +196,35 @@ class CalculatorEngine(
 
     // ---- Trigonometry ----
 
-    fun pressSin(state: CalculatorState): CalculatorState =
-        applyUnary(clearErrorIfAny(state)) { x -> mathOperations.sin(x, state.angleMode) }
+    fun pressSin(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(state)
+        return applyUnary(s) { x -> mathOperations.sin(x, s.angleMode) }
+    }
 
-    fun pressCos(state: CalculatorState): CalculatorState =
-        applyUnary(clearErrorIfAny(state)) { x -> mathOperations.cos(x, state.angleMode) }
+    fun pressCos(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(state)
+        return applyUnary(s) { x -> mathOperations.cos(x, s.angleMode) }
+    }
 
-    fun pressTan(state: CalculatorState): CalculatorState =
-        applyUnary(clearErrorIfAny(state)) { x -> mathOperations.tan(x, state.angleMode) }
+    fun pressTan(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(state)
+        return applyUnary(s) { x -> mathOperations.tan(x, s.angleMode) }
+    }
 
-    fun pressArcsin(state: CalculatorState): CalculatorState =
-        applyUnary(clearErrorIfAny(state)) { x -> mathOperations.arcsin(x, state.angleMode) }
+    fun pressArcsin(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(state)
+        return applyUnary(s) { x -> mathOperations.arcsin(x, s.angleMode) }
+    }
 
-    fun pressArccos(state: CalculatorState): CalculatorState =
-        applyUnary(clearErrorIfAny(state)) { x -> mathOperations.arccos(x, state.angleMode) }
+    fun pressArccos(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(state)
+        return applyUnary(s) { x -> mathOperations.arccos(x, s.angleMode) }
+    }
 
-    fun pressArctan(state: CalculatorState): CalculatorState =
-        applyUnary(clearErrorIfAny(state)) { x -> mathOperations.arctan(x, state.angleMode) }
+    fun pressArctan(state: CalculatorState): CalculatorState {
+        val s = clearErrorIfAny(state)
+        return applyUnary(s) { x -> mathOperations.arctan(x, s.angleMode) }
+    }
 
     // ---- Percentage ----
 

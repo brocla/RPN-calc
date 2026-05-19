@@ -1,26 +1,33 @@
 package com.brocla.rpn_calc.ui.calculator
 
+import com.brocla.rpn_calc.logic.model.DisplayMode
+import com.brocla.rpn_calc.logic.model.EntryState
+
 /**
  * Inserts zero-width comma separators (U+002C) into the integer part of a plain
  * numeric string produced by :logic's DisplayFormatter.  The comma glyph in the
  * modified DSEG7 font has advance-width 0, so it does not shift digit positions.
  *
+ * Commas are only applicable in FIX and ALL modes — SCI and ENG use a positional
+ * exponent format where the integer part is never wide enough to need grouping, and
+ * exponent entry always uses the positional format regardless of mode.
+ *
  * Rules:
  *  - Error strings (no sign-slot prefix) are returned unchanged.
- *  - SCI / ENG / exponent-entry strings (which contain internal spaces after position 0)
- *    are returned unchanged.
+ *  - SCI and ENG modes are returned unchanged.
+ *  - Exponent entry state is returned unchanged.
  *  - Position 0 is always the sign-slot character (' ' or '-'); it is preserved
  *    unchanged and is never included in the digit-grouping logic.
  *  - Only the integer portion (left of '.') is grouped.
  *  - Integer parts with ≤ 3 digits need no comma.
  */
-fun insertThousandsCommas(plain: String): String {
+fun insertThousandsCommas(plain: String, mode: DisplayMode, entryState: EntryState): String {
     if (plain.isEmpty()) return plain
-    if (plain[0] !in " -") return plain          // error strings have no sign slot
-    if (plain.drop(1).contains(' ')) return plain // SCI/ENG/exponent-entry have internal spaces
-    if (plain.drop(1).contains('-')) return plain // exponent-entry with negative exponent, no spaces
+    if (plain[0] !in " -") return plain                      // error string, no sign slot
+    if (mode !is DisplayMode.Fix && mode !is DisplayMode.All) return plain  // SCI/ENG never get commas
+    if (entryState is EntryState.Exponent) return plain      // positional exponent entry, no commas
 
-    val signChar = plain[0]           // always ' ' or '-'
+    val signChar = plain[0]
     val rest = plain.substring(1)
 
     val dotIndex = rest.indexOf('.')

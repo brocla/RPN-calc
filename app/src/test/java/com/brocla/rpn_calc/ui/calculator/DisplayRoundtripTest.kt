@@ -7,6 +7,7 @@ import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.logic.model.CalculatorState
 import com.brocla.rpn_calc.logic.model.DisplayMode
 import com.brocla.rpn_calc.logic.model.DisplaySettings
+import com.brocla.rpn_calc.logic.model.EntryState
 import com.brocla.rpn_calc.logic.model.Stack
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -35,7 +36,7 @@ class DisplayRoundtripTest {
             stack           = Stack(x = value),
             displaySettings = DisplaySettings(mode),
         )
-        return insertThousandsCommas(engine.getDisplay(state))
+        return insertThousandsCommas(engine.getDisplay(state), mode, EntryState.Idle)
     }
 
     /**

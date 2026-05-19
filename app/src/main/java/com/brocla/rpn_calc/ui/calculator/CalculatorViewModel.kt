@@ -216,7 +216,7 @@ class CalculatorViewModel @Inject constructor(
     }
 
     private fun buildDisplay(cs: CalculatorState): String =
-        insertThousandsCommas(engine.getDisplay(cs))
+        insertThousandsCommas(engine.getDisplay(cs), cs.displaySettings.mode, cs.entryState)
 
     /**
      * If the display string is a range error ("Overflow"/"Underflow"), promote it
@@ -236,7 +236,7 @@ class CalculatorViewModel @Inject constructor(
                 entryState = EntryState.Idle,
                 error      = null,
             )
-        ))
+        ), cs.displaySettings.mode, EntryState.Idle)
 
     private fun defaultUiState(): CalculatorUiState {
         val default = CalculatorState()

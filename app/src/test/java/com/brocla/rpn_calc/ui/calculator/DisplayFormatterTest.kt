@@ -1,11 +1,16 @@
 package com.brocla.rpn_calc.ui.calculator
 
+import com.brocla.rpn_calc.logic.model.DisplayMode
+import com.brocla.rpn_calc.logic.model.EntryState
 import org.junit.Test
 import kotlin.test.assertEquals
 
 class DisplayFormatterTest {
 
-    private fun fmt(s: String) = insertThousandsCommas(s)
+    // Tests operate on raw strings; use FIX mode and Idle state as the neutral baseline.
+    // SCI/ENG and exponent-entry exclusion is tested via the mode/entryState parameters below.
+    private fun fmt(s: String, mode: DisplayMode = DisplayMode.Fix(2), entryState: EntryState = EntryState.Idle) =
+        insertThousandsCommas(s, mode, entryState)
 
     // --- Values below 1000: no comma inserted ---
     // All inputs now start with a sign-slot character (' ' or '-').
@@ -36,20 +41,17 @@ class DisplayFormatterTest {
     @Test fun comma_negativeLarge()     = assertEquals("-1,000,000", fmt("-1000000"))
 
     // --- Exponent-entry strings must NOT be grouped ---
-    // When paddingSpaces=0 and expSign='-', there are no internal spaces.
-    // The only reliable marker is the '-' at position 9 (expSign).
 
     @Test fun noComma_exponentEntry_negExp_fullMantissa() =
-        assertEquals("-12345678-88", fmt("-12345678-88"))
+        assertEquals("-12345678-88", fmt("-12345678-88", entryState = EntryState.Exponent("12345678", "", false, true, "88", false)))
 
     @Test fun noComma_exponentEntry_negExp_positiveMantissa() =
-        assertEquals(" 12345678-88", fmt(" 12345678-88"))
+        assertEquals(" 12345678-88", fmt(" 12345678-88", entryState = EntryState.Exponent("12345678", "", false, false, "88", false)))
 
     // --- SCI / ENG strings must NOT be grouped ---
-    // New positional format: 13 chars, internal spaces, no 'e' character.
 
-    @Test fun noComma_sciPositive()     = assertEquals(" 1.234     07",  fmt(" 1.234     07"))
-    @Test fun noComma_sciNegative()     = assertEquals("-3.50     -12",  fmt("-3.50     -12"))
-    @Test fun noComma_sciLargeDp()      = assertEquals(" 1.0000000 00",  fmt(" 1.0000000 00"))
-    @Test fun noComma_engFormat()       = assertEquals(" 12.35     03",  fmt(" 12.35     03"))
+    @Test fun noComma_sciPositive()     = assertEquals(" 1.234     07",  fmt(" 1.234     07",  mode = DisplayMode.Sci(3)))
+    @Test fun noComma_sciNegative()     = assertEquals("-3.50     -12",  fmt("-3.50     -12",  mode = DisplayMode.Sci(2)))
+    @Test fun noComma_sciLargeDp()      = assertEquals(" 1.0000000 00",  fmt(" 1.0000000 00",  mode = DisplayMode.Sci(7)))
+    @Test fun noComma_engFormat()       = assertEquals(" 12.35     03",  fmt(" 12.35     03",  mode = DisplayMode.Eng(2)))
 }
