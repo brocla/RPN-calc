@@ -2,9 +2,9 @@ package com.brocla.rpn_calc.ui.calculator
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.brocla.rpn_calc.data.CalcStateRepository
+import com.brocla.rpn_calc.data.ICalcStateRepository
 import com.brocla.rpn_calc.logic.display.DisplayResult
-import com.brocla.rpn_calc.logic.engine.CalculatorEngine
+import com.brocla.rpn_calc.logic.engine.ICalculatorEngine
 import com.brocla.rpn_calc.logic.model.CalculatorState
 import com.brocla.rpn_calc.logic.model.EntryState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,8 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CalculatorViewModel @Inject constructor(
-    private val engine: CalculatorEngine,
-    private val repository: CalcStateRepository,
+    private val engine: ICalculatorEngine,
+    private val repository: ICalcStateRepository,
     private val clipboardParser: ClipboardParser,
 ) : ViewModel() {
 

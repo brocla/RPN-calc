@@ -15,7 +15,7 @@ class CalculatorEngine(
     private val entryStateMachine: IEntryStateMachine,
     private val mathOperations: MathOperations,
     private val displayFormatter: IDisplayFormatter
-) {
+) : ICalculatorEngine {
     // ---- Entry-level helpers ----
 
     private fun commitEntry(state: CalculatorState): CalculatorState =
@@ -67,17 +67,17 @@ class CalculatorEngine(
 
     // ---- Digit entry ----
 
-    fun pressDigit(state: CalculatorState, digit: Int): CalculatorState {
+    override fun pressDigit(state: CalculatorState, digit: Int): CalculatorState {
         val s = clearErrorIfAny(state)
         return entryStateMachine.pressDigit(s, digit)
     }
 
-    fun pressDecimal(state: CalculatorState): CalculatorState {
+    override fun pressDecimal(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return entryStateMachine.pressDecimal(s)
     }
 
-    fun pressChs(state: CalculatorState): CalculatorState {
+    override fun pressChs(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return when (s.entryState) {
             is EntryState.Idle -> s.copy(stack = s.stack.withX(-s.stack.x))
@@ -85,12 +85,12 @@ class CalculatorEngine(
         }
     }
 
-    fun pressEex(state: CalculatorState): CalculatorState {
+    override fun pressEex(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return entryStateMachine.pressEex(s)
     }
 
-    fun pressBackspace(state: CalculatorState): CalculatorState {
+    override fun pressBackspace(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         // In Idle state (no digit entry in progress) backspace acts as CLX: clear X to 0.
         return if (s.entryState is EntryState.Idle) {
@@ -102,7 +102,7 @@ class CalculatorEngine(
 
     // ---- Stack operations ----
 
-    fun pressEnter(state: CalculatorState): CalculatorState {
+    override fun pressEnter(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         val committed = commitEntry(s)
         val x = committed.stack.x
@@ -113,7 +113,7 @@ class CalculatorEngine(
         )
     }
 
-    fun pressCLX(state: CalculatorState): CalculatorState {
+    override fun pressCLX(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return s.copy(
             stack = s.stack.withX(0.0),
@@ -122,17 +122,17 @@ class CalculatorEngine(
         )
     }
 
-    fun pressRollDown(state: CalculatorState): CalculatorState {
+    override fun pressRollDown(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(stack = s.stack.rollDown(), stackLiftEnabled = true)
     }
 
-    fun pressSwap(state: CalculatorState): CalculatorState {
+    override fun pressSwap(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(stack = s.stack.swap(), stackLiftEnabled = true)
     }
 
-    fun pressLastX(state: CalculatorState): CalculatorState {
+    override fun pressLastX(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(
             stack = s.stack.lift().withX(s.lastX),
@@ -142,13 +142,13 @@ class CalculatorEngine(
 
     // ---- Memory ----
 
-    fun pressSto(state: CalculatorState, register: Int): CalculatorState {
+    override fun pressSto(state: CalculatorState, register: Int): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         val newMemory = s.memory.toMutableList().also { it[register] = s.stack.x }
         return s.copy(memory = newMemory)
     }
 
-    fun pressRcl(state: CalculatorState, register: Int): CalculatorState {
+    override fun pressRcl(state: CalculatorState, register: Int): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         val value = s.memory[register]
         val newStack = s.stack.lift().withX(value)
@@ -157,79 +157,79 @@ class CalculatorEngine(
 
     // ---- Arithmetic ----
 
-    fun pressAdd(state: CalculatorState): CalculatorState =
+    override fun pressAdd(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.add(y, x) }
 
-    fun pressSubtract(state: CalculatorState): CalculatorState =
+    override fun pressSubtract(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.subtract(y, x) }
 
-    fun pressMultiply(state: CalculatorState): CalculatorState =
+    override fun pressMultiply(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.multiply(y, x) }
 
-    fun pressDivide(state: CalculatorState): CalculatorState =
+    override fun pressDivide(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.divide(y, x) }
 
     // ---- Powers and logarithms ----
 
-    fun pressReciprocal(state: CalculatorState): CalculatorState =
+    override fun pressReciprocal(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.reciprocal(x) }
 
-    fun pressSqrt(state: CalculatorState): CalculatorState =
+    override fun pressSqrt(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.sqrt(x) }
 
-    fun pressSquare(state: CalculatorState): CalculatorState =
+    override fun pressSquare(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.square(x) }
 
-    fun pressPow10(state: CalculatorState): CalculatorState =
+    override fun pressPow10(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.pow10(x) }
 
-    fun pressLog(state: CalculatorState): CalculatorState =
+    override fun pressLog(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.log10(x) }
 
-    fun pressExp(state: CalculatorState): CalculatorState =
+    override fun pressExp(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.exp(x) }
 
-    fun pressLn(state: CalculatorState): CalculatorState =
+    override fun pressLn(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.ln(x) }
 
-    fun pressPower(state: CalculatorState): CalculatorState =
+    override fun pressPower(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.power(y, x) }
 
     // ---- Trigonometry ----
 
-    fun pressSin(state: CalculatorState): CalculatorState {
+    override fun pressSin(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return applyUnary(s) { x -> mathOperations.sin(x, s.angleMode) }
     }
 
-    fun pressCos(state: CalculatorState): CalculatorState {
+    override fun pressCos(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return applyUnary(s) { x -> mathOperations.cos(x, s.angleMode) }
     }
 
-    fun pressTan(state: CalculatorState): CalculatorState {
+    override fun pressTan(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return applyUnary(s) { x -> mathOperations.tan(x, s.angleMode) }
     }
 
-    fun pressArcsin(state: CalculatorState): CalculatorState {
+    override fun pressArcsin(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return applyUnary(s) { x -> mathOperations.arcsin(x, s.angleMode) }
     }
 
-    fun pressArccos(state: CalculatorState): CalculatorState {
+    override fun pressArccos(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return applyUnary(s) { x -> mathOperations.arccos(x, s.angleMode) }
     }
 
-    fun pressArctan(state: CalculatorState): CalculatorState {
+    override fun pressArctan(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         return applyUnary(s) { x -> mathOperations.arctan(x, s.angleMode) }
     }
 
     // ---- Percentage ----
 
-    fun pressPercent(state: CalculatorState): CalculatorState {
+    override fun pressPercent(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         val result = mathOperations.percentOf(s.stack.y, s.stack.x)
         return when (result) {
@@ -241,7 +241,7 @@ class CalculatorEngine(
         }
     }
 
-    fun pressPercentChange(state: CalculatorState): CalculatorState {
+    override fun pressPercentChange(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         val result = mathOperations.percentChange(s.stack.y, s.stack.x)
         return when (result) {
@@ -255,18 +255,18 @@ class CalculatorEngine(
 
     // ---- Combinatorics ----
 
-    fun pressFactorial(state: CalculatorState): CalculatorState =
+    override fun pressFactorial(state: CalculatorState): CalculatorState =
         applyUnary(clearErrorIfAny(state)) { x -> mathOperations.factorial(x) }
 
-    fun pressCombinations(state: CalculatorState): CalculatorState =
+    override fun pressCombinations(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.combinations(y, x) }
 
-    fun pressPermutations(state: CalculatorState): CalculatorState =
+    override fun pressPermutations(state: CalculatorState): CalculatorState =
         applyBinary(clearErrorIfAny(state)) { y, x -> mathOperations.permutations(y, x) }
 
     // ---- Polar / Rectangular ----
 
-    fun pressToPolar(state: CalculatorState): CalculatorState {
+    override fun pressToPolar(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         val withLastX = s.copy(lastX = s.stack.x)
         val (newY, newX) = mathOperations.toPolar(s.stack.y, s.stack.x, s.angleMode)
@@ -280,7 +280,7 @@ class CalculatorEngine(
         }
     }
 
-    fun pressToRectangular(state: CalculatorState): CalculatorState {
+    override fun pressToRectangular(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         val withLastX = s.copy(lastX = s.stack.x)
         val (newY, newX) = mathOperations.toRectangular(s.stack.y, s.stack.x, s.angleMode)
@@ -296,7 +296,7 @@ class CalculatorEngine(
 
     // ---- Constants ----
 
-    fun pressPi(state: CalculatorState): CalculatorState {
+    override fun pressPi(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(state)
         val committed = commitEntry(s)
         val newStack = committed.stack.lift().withX(kotlin.math.PI)
@@ -305,40 +305,40 @@ class CalculatorEngine(
 
     // ---- Shift and display mode ----
 
-    fun pressShift(state: CalculatorState): CalculatorState =
+    override fun pressShift(state: CalculatorState): CalculatorState =
         state.copy(shiftActive = true)
 
-    fun pressFixMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
+    override fun pressFixMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(displaySettings = DisplaySettings(DisplayMode.Fix(decimalPlaces)), shiftActive = false)
     }
 
-    fun pressSciMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
+    override fun pressSciMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(displaySettings = DisplaySettings(DisplayMode.Sci(decimalPlaces)), shiftActive = false)
     }
 
-    fun pressEngMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
+    override fun pressEngMode(state: CalculatorState, decimalPlaces: Int): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(displaySettings = DisplaySettings(DisplayMode.Eng(decimalPlaces)), shiftActive = false)
     }
 
-    fun pressAllMode(state: CalculatorState): CalculatorState {
+    override fun pressAllMode(state: CalculatorState): CalculatorState {
         val s = clearErrorIfAny(commitEntry(state))
         return s.copy(displaySettings = DisplaySettings(DisplayMode.All), shiftActive = false)
     }
 
-    fun pressDegRad(state: CalculatorState): CalculatorState {
+    override fun pressDegRad(state: CalculatorState): CalculatorState {
         val newMode = if (state.angleMode == AngleMode.DEG) AngleMode.RAD else AngleMode.DEG
         return state.copy(angleMode = newMode, shiftActive = false)
     }
 
     // ---- Display ----
 
-    fun getDisplayResult(state: CalculatorState): DisplayResult =
+    override fun getDisplayResult(state: CalculatorState): DisplayResult =
         displayFormatter.formatResult(state)
 
-    fun getDisplay(state: CalculatorState): String =
+    override fun getDisplay(state: CalculatorState): String =
         when (val r = getDisplayResult(state)) {
             is DisplayResult.Text       -> r.string
             is DisplayResult.RangeError -> r.label
