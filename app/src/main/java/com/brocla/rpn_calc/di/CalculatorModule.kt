@@ -6,11 +6,13 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.brocla.rpn_calc.data.CalcStateRepository
+import com.brocla.rpn_calc.data.ICalcStateRepository
 import com.brocla.rpn_calc.data.ConstantsRepository
 import com.brocla.rpn_calc.data.ConstantsRepositoryImpl
 import com.brocla.rpn_calc.logic.display.DisplayFormatter
 import com.brocla.rpn_calc.logic.display.IDisplayFormatter
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
+import com.brocla.rpn_calc.logic.engine.ICalculatorEngine
 import com.brocla.rpn_calc.logic.entry.EntryStateMachine
 import com.brocla.rpn_calc.logic.entry.IEntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
@@ -69,4 +71,10 @@ abstract class CalculatorBindingsModule {
 
     @Binds @Singleton
     abstract fun bindDisplayFormatter(impl: DisplayFormatter): IDisplayFormatter
+
+    @Binds @Singleton
+    abstract fun bindCalculatorEngine(impl: CalculatorEngine): ICalculatorEngine
+
+    @Binds @Singleton
+    abstract fun bindCalcStateRepository(impl: CalcStateRepository): ICalcStateRepository
 }

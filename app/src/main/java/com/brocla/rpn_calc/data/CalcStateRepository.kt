@@ -19,21 +19,21 @@ object CalcPersistenceKeys {
 class CalcStateRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val entryStateMachine: IEntryStateMachine,
-) {
+) : ICalcStateRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
-    val calcState: Flow<CalculatorState?> = dataStore.data.map { prefs ->
+    override val calcState: Flow<CalculatorState?> = dataStore.data.map { prefs ->
         prefs[CalcPersistenceKeys.CALC_STATE]?.let { stored ->
             try { json.decodeFromString<CalculatorState>(stored) } catch (_: Exception) { null }
         }
     }
 
-    suspend fun save(state: CalculatorState) {
+    override suspend fun save(state: CalculatorState) {
         val committed = entryStateMachine.completeEntry(state)
         dataStore.edit { it[CalcPersistenceKeys.CALC_STATE] = json.encodeToString(committed) }
     }
 
-    suspend fun clear() {
+    override suspend fun clear() {
         dataStore.edit { it.remove(CalcPersistenceKeys.CALC_STATE) }
     }
 }
