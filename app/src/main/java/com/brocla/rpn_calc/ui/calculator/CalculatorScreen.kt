@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ import com.brocla.rpn_calc.ui.theme.CalcTheme
 import com.brocla.rpn_calc.voice.VoiceState
 
 private val TRANSCRIPT_FONT_SIZE = 18.sp
+private val TRANSCRIPT_BAR_COLOR = Color(0xFF1A1A2E)
 
 @Composable
 fun CalculatorScreen(
@@ -78,10 +80,7 @@ fun CalculatorScreen(
             )
         }
         if (voiceState is VoiceState.Listening) {
-            VoiceTranscriptBar(
-                text        = voiceDebugText,
-                isListening = true,
-            )
+            VoiceTranscriptBar(text = voiceDebugText)
         }
         Spacer(modifier = Modifier.height(6.dp))
         LayoutRenderer(
@@ -103,6 +102,10 @@ fun CalculatorScreen(
                                 triggered = true
                                 onKey(CalcKeyEvent.Enter)
                             }
+                            if (!triggered && totalDragY > thresholdPx) {
+                                triggered = true
+                                onKey(CalcKeyEvent.ToggleMic)
+                            }
                         },
                     )
                 },
@@ -111,30 +114,23 @@ fun CalculatorScreen(
 }
 
 @Composable
-private fun VoiceTranscriptBar(
-    text: String,
-    isListening: Boolean,
-) {
+private fun VoiceTranscriptBar(text: String) {
     val scrollState = rememberScrollState()
-    LaunchedEffect(text) { scrollState.animateScrollTo(scrollState.maxValue) }
+    LaunchedEffect(text) { scrollState.scrollTo(scrollState.maxValue) }
 
-    val cursorAlpha by if (isListening) {
-        rememberInfiniteTransition(label = "cursor-blink")
-            .animateFloat(
-                initialValue  = 1f,
-                targetValue   = 0f,
-                animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
-                label         = "cursor-alpha",
-            )
-    } else {
-        androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    }
+    val cursorAlpha by rememberInfiniteTransition(label = "cursor-blink")
+        .animateFloat(
+            initialValue  = 1f,
+            targetValue   = 0f,
+            animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
+            label         = "cursor-alpha",
+        )
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1A2E))
+            .background(TRANSCRIPT_BAR_COLOR)
             .horizontalScroll(scrollState)
             .padding(horizontal = 6.dp, vertical = 3.dp),
     ) {
@@ -147,10 +143,11 @@ private fun VoiceTranscriptBar(
         )
         Text(
             text       = " ▎",
-            color      = Color.Yellow.copy(alpha = cursorAlpha),
+            color      = Color.Yellow,
             fontSize   = TRANSCRIPT_FONT_SIZE,
             fontFamily = FontFamily.Monospace,
             maxLines   = 1,
+            modifier   = Modifier.graphicsLayer { alpha = cursorAlpha },
         )
     }
 }

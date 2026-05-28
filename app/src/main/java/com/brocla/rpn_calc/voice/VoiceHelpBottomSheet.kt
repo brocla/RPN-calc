@@ -101,6 +101,6 @@ private val VOICE_HELP_ENTRIES: List<Pair<String, List<Pair<String, String>>>> =
         "Paste"   to "paste",
     ),
     "Help" to listOf(
-        "This sheet" to "help",
+        "This sheet" to "help  /  long-press mic",
     ),
 )

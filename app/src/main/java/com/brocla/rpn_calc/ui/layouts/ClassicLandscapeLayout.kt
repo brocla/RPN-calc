@@ -1,9 +1,11 @@
 package com.brocla.rpn_calc.ui.layouts
 
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brocla.rpn_calc.ui.calculator.CalcKeyEvent
 import com.brocla.rpn_calc.ui.calculator.components.KeyDef
+import com.brocla.rpn_calc.ui.calculator.components.MicLabel
 import com.brocla.rpn_calc.ui.calculator.components.RadicalLabel
 import com.brocla.rpn_calc.ui.theme.CalcColors
 
@@ -71,7 +73,7 @@ private val row3 = KeyRow(listOf(
 
 // ---------------------------------------------------------------------------
 // Row 4  (cols 1–10)
-// primary: LAYOUT  SHIFT  —  STO  RCL  [spacer]  0  .  π  +
+// primary: LAYOUT  SHIFT  —  STO  RCL  [spacer]  0  ./π  🎤  +
 // ---------------------------------------------------------------------------
 private val row4 = KeyRow(listOf(
     KeySlot.Key(KeyDef(
@@ -89,11 +91,17 @@ private val row4 = KeyRow(listOf(
     KeySlot.Key(KeyDef("STO", "", CalcKeyEvent.Sto)),
     KeySlot.Key(KeyDef("RCL", "", CalcKeyEvent.Rcl)),
     KeySlot.Spacer(1f),   // blank column 6 (below ENTER)
-    KeySlot.Key(KeyDef("0",   "", CalcKeyEvent.Digit(0))),
-    KeySlot.Key(KeyDef(".",   "", CalcKeyEvent.Decimal)),
-    KeySlot.Key(KeyDef("π", "CONST", CalcKeyEvent.Pi, CalcKeyEvent.OpenConstants)),
-    KeySlot.Key(KeyDef("+",   "", CalcKeyEvent.Add,      keyColor = CalcColors.KeyArith)),
-))
+    KeySlot.Key(KeyDef("0",   "",  CalcKeyEvent.Digit(0))),
+    KeySlot.Key(KeyDef(".", "π",   CalcKeyEvent.Decimal, CalcKeyEvent.Pi)),
+    KeySlot.Key(KeyDef(
+        primaryLabel = "",
+        shiftedLabel = "CONST",
+        event        = CalcKeyEvent.ToggleMic,
+        shiftedEvent = CalcKeyEvent.OpenConstants,
+        customLabel  = { color, fontSize -> MicLabel(color, fontSize) },
+    )),
+    KeySlot.Key(KeyDef("+",   "",  CalcKeyEvent.Add,      keyColor = CalcColors.KeyArith)),
+), primaryTopPadding = 24.dp)
 
 val ClassicLandscapeLayout = LayoutDescriptor(
     name        = "Classic Landscape",

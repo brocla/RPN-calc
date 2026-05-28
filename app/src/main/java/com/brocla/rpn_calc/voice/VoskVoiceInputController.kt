@@ -16,7 +16,7 @@ import org.vosk.android.SpeechService
 import javax.inject.Inject
 
 class VoskVoiceInputController @Inject constructor(
-    private val modelLoader: VoiceModelLoader,
+    private val modelLoader: VoiceModelProvider,
 ) : VoiceInputController {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -37,7 +37,7 @@ class VoskVoiceInputController @Inject constructor(
         val model = modelLoader.model.value ?: return   // guard: FAB should prevent this
         try {
             val recognizer = Recognizer(model, SAMPLE_RATE, GRAMMAR)
-            recognizer.setMaxAlternatives(5)
+            recognizer.setMaxAlternatives(1)
             speechService = SpeechService(recognizer, SAMPLE_RATE).also {
                 it.startListening(recognitionListener)
             }
@@ -60,7 +60,7 @@ class VoskVoiceInputController @Inject constructor(
 
     // ── RecognitionListener ───────────────────────────────────────────────────
 
-    private val recognitionListener = object : RecognitionListener {
+    internal val recognitionListener = object : RecognitionListener {
 
         override fun onPartialResult(hypothesis: String) {
             val partial = parseText(hypothesis, "partial")

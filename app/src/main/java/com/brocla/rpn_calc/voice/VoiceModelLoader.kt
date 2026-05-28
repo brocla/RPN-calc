@@ -13,9 +13,9 @@ import javax.inject.Singleton
 @Singleton
 class VoiceModelLoader @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : VoiceModelProvider {
     private val _model = MutableStateFlow<Model?>(null)
-    val model: StateFlow<Model?> = _model
+    override val model: StateFlow<Model?> = _model
 
     fun load() {
         StorageService.unpack(

@@ -226,6 +226,13 @@ class VoiceParserImplTest {
         assertEquals(listOf(CalcKeyEvent.OpenVoiceHelp),  p.parse("help"))
     }
 
+    @Test fun help_prefix_ignored() {
+        // "help plus" — "help" is a spurious HH-onset prefix, should be dropped
+        val (p, _) = parser()
+        assertEquals(listOf(CalcKeyEvent.Add), p.parse("help plus"))
+        assertEquals(listOf(CalcKeyEvent.Enter), p.parse("help enter"))
+    }
+
     @Test fun store_with_digit() {
         val fake = FakeDigitSequenceParser(listOf(3))
         val impl = VoiceParserImpl(fake)

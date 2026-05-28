@@ -11,7 +11,7 @@ class VoiceParserImpl @Inject constructor(
         val normalized = utterance.trim().lowercase()
         if (normalized.isEmpty()) return emptyList()
 
-        val tokens = normalized.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val tokens = normalized.split(WHITESPACE).filter { it.isNotEmpty() }
         val events = mutableListOf<CalcKeyEvent>()
 
         // Accumulator for the current number segment (pre-decimal tokens)
@@ -64,6 +64,11 @@ class VoiceParserImpl @Inject constructor(
             // 2. Single-word exact operator
             val exactEvent = SINGLE_WORD_OPS[t]
             if (exactEvent != null) {
+                if (exactEvent == CalcKeyEvent.OpenVoiceHelp && tokens.size > 1) {
+                    // "help" spoken alone → open help; "help <cmd>" → spurious onset, skip "help"
+                    i++
+                    continue
+                }
                 if (exactEvent == CalcKeyEvent.Decimal && !seenDecimal) {
                     flushPreDecimal()
                     events.add(CalcKeyEvent.Decimal)
@@ -259,12 +264,14 @@ class VoiceParserImpl @Inject constructor(
             // Clipboard (intercepted in CalculatorRoute)
             "copy"        to CalcKeyEvent.CopyRequest,
             "paste"       to CalcKeyEvent.PasteClipboard,
-            // Help (intercepted in CalculatorRoute)
+            // Help — only fires when spoken alone; spurious onset prefix is dropped by solo-token guard above
             "help"        to CalcKeyEvent.OpenVoiceHelp,
         )
 
         // Flat list for fuzzy search — multi-word phrases are excluded (too long for ≤2 edit distance)
         val ALL_KEYWORDS: List<Pair<String, CalcKeyEvent>> =
             SINGLE_WORD_OPS.entries.map { it.key to it.value }
+
+        private val WHITESPACE = Regex("\\s+")
     }
 }

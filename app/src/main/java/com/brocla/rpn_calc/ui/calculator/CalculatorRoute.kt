@@ -1,7 +1,12 @@
 package com.brocla.rpn_calc.ui.calculator
 
 import android.Manifest
+import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.view.WindowManager
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,7 +46,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.brocla.rpn_calc.ui.calculator.components.MicFab
 import com.brocla.rpn_calc.ui.calculator.constants.ConstantsBottomSheet
 import com.brocla.rpn_calc.ui.layouts.ClassicLandscapeLayout
 import com.brocla.rpn_calc.ui.layouts.LayoutDescriptor
@@ -53,6 +58,7 @@ import com.brocla.rpn_calc.voice.VoiceParser
 import com.brocla.rpn_calc.voice.VoiceState
 import com.brocla.rpn_calc.voice.collectAndDispatch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,9 +94,6 @@ fun CalculatorRoute(
         }
     }
 
-    var voiceDebugText by remember { mutableStateOf("") }
-    if (interimText.isNotEmpty()) voiceDebugText = interimText
-
     val layouts: List<LayoutDescriptor> = remember { listOf(PortraitLayout, ClassicLandscapeLayout) }
     var activeLayout by remember { mutableStateOf(layouts.first()) }
     var showLayoutPicker by remember { mutableStateOf(false) }
@@ -111,12 +114,50 @@ fun CalculatorRoute(
         onOrientationChange(orientation)
     }
 
+    val window = (context as? Activity)?.window
+
+    // Wake lock: fires on every state change including initial value (correct — we want the
+    // flag cleared at startup too).
     LaunchedEffect(voiceState) {
-        if (voiceState is VoiceState.Listening && !hasShownVoiceHint) {
-            hasShownVoiceHint = true
-            showVoiceHintBanner = true
-            delay(4000)
-            showVoiceHintBanner = false
+        if (voiceState is VoiceState.Listening) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // Chimes: drop(1) skips the initial StateFlow emission so no sound plays at startup.
+    LaunchedEffect(Unit) {
+        voiceController.state.drop(1).collect { state ->
+            when (state) {
+                is VoiceState.Listening -> chime(MIDI_C5, MIDI_E5)
+                is VoiceState.Idle      -> chime(MIDI_E5, MIDI_C5)
+                else                    -> Unit
+            }
+        }
+    }
+
+    // Separate effect (different key) so the banner delay is never cancelled by other voiceState
+    // LaunchedEffect restarts. Key is Unit so it runs exactly once per composition lifecycle.
+    LaunchedEffect(Unit) {
+        voiceController.state.collect { state ->
+            if (state is VoiceState.Listening && !hasShownVoiceHint) {
+                hasShownVoiceHint = true
+                showVoiceHintBanner = true
+                delay(4000)
+                showVoiceHintBanner = false
+            }
+        }
+    }
+
+    // Reset the 30 s silence timer on every partial result.
+    // LaunchedEffect cancels the previous coroutine automatically when interimText changes,
+    // so each new word of speech restarts the countdown.
+    LaunchedEffect(interimText) {
+        if (voiceState is VoiceState.Listening && interimText.isNotEmpty()) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            delay(30_000)
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
@@ -125,6 +166,7 @@ fun CalculatorRoute(
             CalcKeyEvent.OpenLayoutPicker -> showLayoutPicker = true
             CalcKeyEvent.ResetRequest    -> showResetConfirmation = true
             CalcKeyEvent.OpenConstants   -> showConstants = true
+            CalcKeyEvent.ToggleMic       -> onMicToggle()
             CalcKeyEvent.OpenVoiceHelp   -> showVoiceHelp = true
             CalcKeyEvent.CopyRequest     -> {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -233,39 +275,83 @@ fun CalculatorRoute(
             activeLayout       = activeLayout,
             onKey              = onKey,
             onDisplayLongPress = { showClipboardDialog = true },
-            voiceDebugText     = voiceDebugText,
+            voiceDebugText     = interimText,
             voiceState         = voiceState,
         )
 
-        MicFab(
-            voiceState  = voiceState,
-            onToggle    = onMicToggle,
-            onLongPress = { showVoiceHelp = true },
-            modifier    = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-        )
-
-        // One-time hint tooltip that appears beside the mic FAB on first activation
+        // One-time hint tooltip on first voice activation
         AnimatedVisibility(
             visible  = showVoiceHintBanner,
             enter    = fadeIn(),
             exit     = fadeOut(),
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 80.dp, bottom = 28.dp),
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(end = 12.dp, top = 8.dp),
         ) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = MaterialTheme.colorScheme.inverseSurface,
             ) {
                 Text(
-                    text     = "Say \"help\" for voice commands",
+                    text     = "Swipe down or tap 🎤 for voice",
                     color    = MaterialTheme.colorScheme.inverseOnSurface,
                     style    = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
         }
+    }
+}
+
+// MIDI note numbers — C5 = 72, E5 = 76
+private const val MIDI_C5 = 72
+private const val MIDI_E5 = 76
+private const val CHIME_NOTE_MS = 120        // duration of each note in the chime
+private const val CHIME_SAMPLE_RATE = 44100
+
+private fun midiHz(note: Int): Double = 440.0 * Math.pow(2.0, (note - 69) / 12.0)
+
+/** Play two sequential notes as a chime on a daemon thread. */
+private fun chime(note1: Int, note2: Int, noteMs: Int = CHIME_NOTE_MS) {
+    kotlin.concurrent.thread(isDaemon = true) {
+        val n = CHIME_SAMPLE_RATE * noteMs / 1000
+        val fadeLen = (CHIME_SAMPLE_RATE * 0.018).toInt()  // 18 ms fade between notes
+        val total = n * 2
+        val samples = ShortArray(total)
+        val freqs = listOf(midiHz(note1), midiHz(note2))
+        for (seg in 0..1) {
+            val hz   = freqs[seg]
+            val step = 2.0 * Math.PI * hz / CHIME_SAMPLE_RATE
+            val base = seg * n
+            for (j in 0 until n) {
+                val i = base + j
+                // Fade out last 18 ms of each note to avoid inter-note click
+                val env = if (j >= n - fadeLen) (n - j).toFloat() / fadeLen else 1f
+                samples[i] = (Math.sin(step * j) * Short.MAX_VALUE * 0.45 * env).toInt().toShort()
+            }
+        }
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(CHIME_SAMPLE_RATE)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+            )
+            .setBufferSizeInBytes(total * 2)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+        track.write(samples, 0, total)
+        track.play()
+        Thread.sleep(noteMs.toLong() * 2 + 80)
+        track.stop()
+        track.release()
     }
 }

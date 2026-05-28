@@ -4,8 +4,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brocla.rpn_calc.ui.calculator.CalcKeyEvent
 import com.brocla.rpn_calc.ui.calculator.components.KeyDef
-import com.brocla.rpn_calc.ui.theme.CalcColors
+import com.brocla.rpn_calc.ui.calculator.components.MicLabel
 import com.brocla.rpn_calc.ui.calculator.components.RadicalLabel
+import com.brocla.rpn_calc.ui.theme.CalcColors
 import androidx.compose.ui.text.font.FontWeight
 
 // ---------------------------------------------------------------------------
@@ -93,15 +94,20 @@ private val portRow7 = KeyRow(listOf(
     KeySlot.Key(KeyDef("3",  "", CalcKeyEvent.Digit(3))),
 ))
 
-// Row 8: div 0 . pi/CONST
+// Row 8: div 0 ./π mic
 private val portRow8 = KeyRow(listOf(
-    KeySlot.Key(KeyDef("÷",   "",       CalcKeyEvent.Divide, keyColor = CalcColors.KeyArith)),
-    KeySlot.Key(KeyDef("0",    "",      CalcKeyEvent.Digit(0))),
-    KeySlot.Key(KeyDef(".",    "",      CalcKeyEvent.Decimal)),
-    KeySlot.Key(KeyDef("π", "CONST", CalcKeyEvent.Pi, CalcKeyEvent.OpenConstants)),
-
+    KeySlot.Key(KeyDef("÷",   "",  CalcKeyEvent.Divide, keyColor = CalcColors.KeyArith)),
+    KeySlot.Key(KeyDef("0",   "",  CalcKeyEvent.Digit(0))),
+    KeySlot.Key(KeyDef(".", "π",   CalcKeyEvent.Decimal, CalcKeyEvent.Pi)),
+    KeySlot.Key(KeyDef(
+        primaryLabel = "",
+        shiftedLabel = "CONST",
+        event        = CalcKeyEvent.ToggleMic,
+        shiftedEvent = CalcKeyEvent.OpenConstants,
+        customLabel  = { color, fontSize -> MicLabel(color, fontSize) },
+    )),
 ),
-primaryTopPadding = 24.dp,  // room for the "CONST" shifted label
+primaryTopPadding = 24.dp,  // room for the "π" shifted label on "."
 )
 
 val PortraitLayout = LayoutDescriptor(

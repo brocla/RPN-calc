@@ -49,6 +49,7 @@ sealed interface CalcKeyEvent {
     data object OpenLayoutPicker : CalcKeyEvent // LAYOUT key — intercepted by CalculatorRoute
     data object ResetRequest   : CalcKeyEvent   // long-press backspace — intercepted by CalculatorRoute
     data object OpenConstants  : CalcKeyEvent   // CONST key — intercepted by CalculatorRoute
+    data object ToggleMic      : CalcKeyEvent   // mic button / swipe-down — intercepted by CalculatorRoute
     data object OpenVoiceHelp  : CalcKeyEvent   // "help" spoken or long-press mic — intercepted by CalculatorRoute
     data object CopyRequest    : CalcKeyEvent   // "copy" spoken — intercepted by CalculatorRoute
     data object PasteClipboard : CalcKeyEvent   // "paste" spoken — intercepted by CalculatorRoute
