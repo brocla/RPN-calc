@@ -81,16 +81,22 @@ fun CalculatorRoute(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) voiceController.startListening() }
 
+    val onMicStart: () -> Unit = {
+        if (modelReady != null && voiceState !is VoiceState.Listening) {
+            val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                          PackageManager.PERMISSION_GRANTED
+            if (granted) voiceController.startListening()
+            else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    val onMicStop: () -> Unit = {
+        if (voiceState is VoiceState.Listening) voiceController.stopListening()
+    }
+
     val onMicToggle: () -> Unit = {
         if (modelReady != null) {
-            if (voiceState is VoiceState.Listening) {
-                voiceController.stopListening()
-            } else {
-                val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-                              PackageManager.PERMISSION_GRANTED
-                if (granted) voiceController.startListening()
-                else permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
+            if (voiceState is VoiceState.Listening) onMicStop() else onMicStart()
         }
     }
 
@@ -167,6 +173,8 @@ fun CalculatorRoute(
             CalcKeyEvent.ResetRequest    -> showResetConfirmation = true
             CalcKeyEvent.OpenConstants   -> showConstants = true
             CalcKeyEvent.ToggleMic       -> onMicToggle()
+            CalcKeyEvent.StartMic        -> onMicStart()
+            CalcKeyEvent.StopMic         -> onMicStop()
             CalcKeyEvent.OpenVoiceHelp   -> showVoiceHelp = true
             CalcKeyEvent.CopyRequest     -> {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

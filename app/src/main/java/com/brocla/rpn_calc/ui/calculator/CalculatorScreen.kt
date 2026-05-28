@@ -6,7 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -91,23 +91,35 @@ fun CalculatorScreen(
                 .fillMaxWidth()
                 .weight(gridWeight)
                 .pointerInput(Unit) {
-                    var totalDragY = 0f
-                    var triggered  = false
                     val thresholdPx = 40.dp.toPx()
-                    detectVerticalDragGestures(
-                        onDragStart = { totalDragY = 0f; triggered = false },
-                        onVerticalDrag = { _, dragAmount ->
-                            totalDragY += dragAmount
-                            if (!triggered && totalDragY < -thresholdPx) {
-                                triggered = true
-                                onKey(CalcKeyEvent.Enter)
+                    awaitPointerEventScope {
+                        while (true) {
+                            // Wait for the first finger down
+                            awaitPointerEvent()
+                            var totalY    = 0f
+                            var triggered = false
+                            val twoFinger = awaitPointerEvent().changes.size >= 2
+                            // Consume drag events until all fingers lift
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                if (event.changes.all { !it.pressed }) break
+                                val dy = event.changes.firstOrNull()?.positionChange()?.y ?: 0f
+                                totalY += dy
+                                if (!triggered) {
+                                    if (twoFinger && totalY > thresholdPx) {
+                                        triggered = true
+                                        onKey(CalcKeyEvent.StartMic)
+                                    } else if (twoFinger && totalY < -thresholdPx) {
+                                        triggered = true
+                                        onKey(CalcKeyEvent.StopMic)
+                                    } else if (!twoFinger && totalY < -thresholdPx) {
+                                        triggered = true
+                                        onKey(CalcKeyEvent.Enter)
+                                    }
+                                }
                             }
-                            if (!triggered && totalDragY > thresholdPx) {
-                                triggered = true
-                                onKey(CalcKeyEvent.ToggleMic)
-                            }
-                        },
-                    )
+                        }
+                    }
                 },
         )
     }
