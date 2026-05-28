@@ -42,7 +42,7 @@ class VoskVoiceInputControllerTest {
         val provider = object : VoiceModelProvider {
             override val model: StateFlow<Model?> = MutableStateFlow(null)
         }
-        return VoskVoiceInputController(provider)
+        return VoskVoiceInputController(provider, AudioModeController { })
     }
 
     // ── Partial results → interimText ─────────────────────────────────────────

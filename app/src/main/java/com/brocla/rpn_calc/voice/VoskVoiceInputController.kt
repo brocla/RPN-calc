@@ -15,8 +15,14 @@ import org.vosk.android.RecognitionListener
 import org.vosk.android.SpeechService
 import javax.inject.Inject
 
+/** Sets / restores the audio mode around a recording session. */
+fun interface AudioModeController {
+    fun setMode(mode: Int)
+}
+
 class VoskVoiceInputController @Inject constructor(
     private val modelLoader: VoiceModelProvider,
+    private val audioMode: AudioModeController,
 ) : VoiceInputController {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -36,6 +42,7 @@ class VoskVoiceInputController @Inject constructor(
     override fun startListening() {
         val model = modelLoader.model.value ?: return   // guard: FAB should prevent this
         try {
+            audioMode.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
             val recognizer = Recognizer(model, SAMPLE_RATE, GRAMMAR)
             recognizer.setMaxAlternatives(1)
             speechService = SpeechService(recognizer, SAMPLE_RATE).also {
@@ -44,6 +51,7 @@ class VoskVoiceInputController @Inject constructor(
             _state.value = VoiceState.Listening
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start Vosk", e)
+            audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
             _state.value = VoiceState.Error(VoiceError.AudioHardware)
         }
     }
@@ -52,6 +60,7 @@ class VoskVoiceInputController @Inject constructor(
         speechService?.stop()
         speechService?.shutdown()
         speechService = null
+        audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
         _state.value       = VoiceState.Idle
         _interimText.value = ""
     }
