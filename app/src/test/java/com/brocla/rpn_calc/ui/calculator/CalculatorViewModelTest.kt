@@ -1,13 +1,12 @@
 package com.brocla.rpn_calc.ui.calculator
 
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import com.brocla.rpn_calc.data.CalcStateRepository
 import com.brocla.rpn_calc.logic.display.DisplayFormatter
 import com.brocla.rpn_calc.logic.engine.CalculatorEngine
 import com.brocla.rpn_calc.logic.entry.EntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.logic.model.DisplayMode
 import com.brocla.rpn_calc.logic.model.EntryState
+import com.brocla.rpn_calc.testdoubles.FakeCalcStateRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -16,9 +15,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertNotNull
@@ -27,23 +24,13 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalculatorViewModelTest {
 
-    @get:Rule
-    val tmpFolder = TemporaryFolder()
-
     private lateinit var vm: CalculatorViewModel
-
-    private fun testRepository(): CalcStateRepository {
-        val dataStore = PreferenceDataStoreFactory.create(
-            produceFile = { tmpFolder.newFile("test.preferences_pb") },
-        )
-        return CalcStateRepository(dataStore, EntryStateMachine())
-    }
 
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         val engine = CalculatorEngine(EntryStateMachine(), MathOperations(), DisplayFormatter())
-        vm = CalculatorViewModel(engine, testRepository(), ClipboardParserImpl())
+        vm = CalculatorViewModel(engine, FakeCalcStateRepository(), ClipboardParserImpl())
     }
 
     @After

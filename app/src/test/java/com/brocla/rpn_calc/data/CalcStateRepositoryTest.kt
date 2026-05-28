@@ -8,8 +8,13 @@ import com.brocla.rpn_calc.logic.model.DisplayMode
 import com.brocla.rpn_calc.logic.model.DisplaySettings
 import com.brocla.rpn_calc.logic.model.EntryState
 import com.brocla.rpn_calc.logic.model.Stack
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -21,8 +26,17 @@ class CalcStateRepositoryTest {
     @get:Rule
     val tmpFolder = TemporaryFolder()
 
+    // A real IO scope — cancelled after each test so DataStore coroutines don't outlive the test.
+    private val testScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    @After
+    fun cleanup() {
+        testScope.cancel()
+    }
+
     private fun testRepository(): CalcStateRepository {
         val dataStore = PreferenceDataStoreFactory.create(
+            scope       = testScope,
             produceFile = { tmpFolder.newFile("test.preferences_pb") },
         )
         return CalcStateRepository(dataStore, EntryStateMachine())

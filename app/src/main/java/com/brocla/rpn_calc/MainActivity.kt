@@ -10,11 +10,19 @@ import androidx.core.view.WindowCompat
 import com.brocla.rpn_calc.ui.calculator.CalculatorRoute
 import com.brocla.rpn_calc.ui.calculator.CalculatorViewModel
 import com.brocla.rpn_calc.ui.theme.CalcTheme
+import com.brocla.rpn_calc.voice.VoiceInputController
+import com.brocla.rpn_calc.voice.VoiceModelLoader
+import com.brocla.rpn_calc.voice.VoiceParser
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val viewModel: CalculatorViewModel by viewModels()
+
+    @Inject lateinit var voiceController:  VoiceInputController
+    @Inject lateinit var voiceParser:      VoiceParser
+    @Inject lateinit var voiceModelLoader: VoiceModelLoader
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
@@ -26,8 +34,18 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
             CalcTheme {
-                CalculatorRoute(onOrientationChange = { requestedOrientation = it })
+                CalculatorRoute(
+                    voiceController     = voiceController,
+                    voiceParser         = voiceParser,
+                    voiceModelLoader    = voiceModelLoader,
+                    onOrientationChange = { requestedOrientation = it },
+                )
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        voiceController.destroy()
     }
 }
