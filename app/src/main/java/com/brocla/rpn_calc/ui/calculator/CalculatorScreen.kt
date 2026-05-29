@@ -108,12 +108,15 @@ fun CalculatorScreen(
                                 if (!triggered) {
                                     if (twoFinger && totalY > thresholdPx) {
                                         triggered = true
+                                        event.changes.forEach { it.consume() }
                                         onKey(CalcKeyEvent.StartMic)
                                     } else if (twoFinger && totalY < -thresholdPx) {
                                         triggered = true
+                                        event.changes.forEach { it.consume() }
                                         onKey(CalcKeyEvent.StopMic)
                                     } else if (!twoFinger && totalY < -thresholdPx) {
                                         triggered = true
+                                        event.changes.forEach { it.consume() }
                                         onKey(CalcKeyEvent.Enter)
                                     }
                                 }
