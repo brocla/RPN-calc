@@ -173,6 +173,16 @@ class VoskVoiceInputControllerTest {
         assertTrue(ctrl.state.value is VoiceState.Error)
     }
 
+    @Test fun on_error_restores_audio_mode() = scope().runTest {
+        val modes = mutableListOf<Int>()
+        val provider = object : VoiceModelProvider {
+            override val model: StateFlow<Model?> = MutableStateFlow(null)
+        }
+        val ctrl = VoskVoiceInputController(provider, AudioModeController { modes.add(it) })
+        ctrl.recognitionListener.onError(RuntimeException("boom"))
+        assertTrue(android.media.AudioManager.MODE_NORMAL in modes)
+    }
+
     // ── stopListening resets state ─────────────────────────────────────────────
 
     @Test fun stop_listening_clears_interim_text() = scope().runTest {

@@ -88,6 +88,10 @@ class VoskVoiceInputController @Inject constructor(
 
         override fun onError(e: Exception) {
             Log.e(TAG, "Vosk error", e)
+            speechService?.stop()
+            speechService?.shutdown()
+            speechService = null
+            audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
             _state.value = VoiceState.Error(VoiceError.Unknown)
         }
 
