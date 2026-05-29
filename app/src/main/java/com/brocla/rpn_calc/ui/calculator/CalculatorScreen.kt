@@ -94,11 +94,26 @@ fun CalculatorScreen(
                     val thresholdPx = 40.dp.toPx()
                     awaitPointerEventScope {
                         while (true) {
-                            // Wait for the first finger down
+                            // Wait for first finger down
                             awaitPointerEvent()
                             var totalY    = 0f
                             var triggered = false
-                            val twoFinger = awaitPointerEvent().changes.size >= 2
+
+                            // Accumulate pointer-down events until a MOVE arrives,
+                            // so fingers that land a few ms apart are counted correctly.
+                            var pointerCount = currentEvent.changes.count { it.pressed }
+                            var settled = false
+                            while (!settled) {
+                                val e = awaitPointerEvent()
+                                val pressing = e.changes.count { it.pressed }
+                                when {
+                                    pressing == 0      -> { settled = true }  // all lifted before moving
+                                    pressing > pointerCount -> pointerCount = pressing  // another finger arrived
+                                    else               -> { settled = true }  // first MOVE — commit
+                                }
+                            }
+                            val twoFinger = pointerCount >= 2
+
                             // Consume drag events until all fingers lift
                             while (true) {
                                 val event = awaitPointerEvent()
