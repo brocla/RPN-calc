@@ -1,5 +1,6 @@
 package com.brocla.rpn_calc.voice
 
+import android.media.audiofx.NoiseSuppressor
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ class VoskVoiceInputController @Inject constructor(
     override val finalUtterance: SharedFlow<String>    = _finalUtterance
 
     private var speechService: SpeechService? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -47,6 +49,10 @@ class VoskVoiceInputController @Inject constructor(
             val recognizer = Recognizer(model, SAMPLE_RATE, GRAMMAR)
             recognizer.setMaxAlternatives(1)
             speechService = SpeechService(recognizer, SAMPLE_RATE).also {
+                if (NoiseSuppressor.isAvailable()) {
+                    noiseSuppressor = NoiseSuppressor.create(it.audioSessionId())
+                        ?.also { ns -> ns.enabled = true }
+                }
                 it.startListening(recognitionListener)
             }
             _state.value = VoiceState.Listening
@@ -61,6 +67,8 @@ class VoskVoiceInputController @Inject constructor(
         speechService?.stop()
         speechService?.shutdown()
         speechService = null
+        noiseSuppressor?.release()
+        noiseSuppressor = null
         audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
         _state.value       = VoiceState.Idle
         _interimText.value = ""
@@ -95,6 +103,8 @@ class VoskVoiceInputController @Inject constructor(
             speechService?.stop()
             speechService?.shutdown()
             speechService = null
+            noiseSuppressor?.release()
+            noiseSuppressor = null
             audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
             _state.value = VoiceState.Error(VoiceError.Unknown)
         }
