@@ -53,10 +53,22 @@ fun VoiceHelpBottomSheet(onDismiss: () -> Unit) {
 
 /** Key label (right column) → voice word(s) (left column). Only non-obvious mappings. */
 private val VOICE_HELP_ENTRIES: List<Pair<String, List<Pair<String, String>>>> = listOf(
+    "Gestures" to listOf(
+        "ENTER"       to "swipe up  (one finger)",
+        "Start voice" to "swipe down  (two fingers)",
+        "Stop voice"  to "swipe up  (two fingers)",
+    ),
     "Numbers" to listOf(
         "0 digit"  to "zero  (say 'zero', not 'oh', when repeating)",
         "2 digit"  to "two  /  to  /  too",
         "decimal"  to "point  /  decimal  /  dot",
+    ),
+    "Common Operations" to listOf(
+        "ENTER"  to "enter  /  push",
+        "CHS"    to "negate  /  change sign",
+        "⌫"      to "backspace  /  back space  /  delete",
+        "CLx"    to "clear  /  clear x",
+        "π"      to "pi",
     ),
     "Stack & Memory" to listOf(
         "R↓"    to "roll  /  roll down",

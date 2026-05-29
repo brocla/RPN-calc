@@ -49,6 +49,7 @@ The rest of this README is AI‑generated.
 - **State persistence** — stack, memory, display mode, and angle mode survive app kills and device restarts (DataStore)
 - **In-app reset** — long-press backspace to reset all state (with confirmation)
 - **Copy/paste** — long-press the display to copy X or paste a number from the clipboard
+- **Voice input** — speak operations and numbers; on-device recognition via Vosk, grammar-constrained to calculator vocabulary
 
 ## Architecture
 
@@ -79,6 +80,43 @@ The display has 12 character positions (0–11). Position 0 is always the sign s
 | ENG N | Same as SCI but exponent is always a multiple of 3 |
 | ALL | Up to 10 significant digits, trailing zeros suppressed; falls back to SCI automatically |
 
+
+## Voice Input
+
+Say calculator operations out loud. Recognition runs entirely on-device using [Vosk](https://alphacephei.com/vosk/) — no audio ever leaves the phone.
+
+### Activation
+
+| Action | Effect |
+|--------|--------|
+| Tap mic key (row 8, col 4) | Toggle voice on / off |
+| Two-finger swipe down on keypad | Start voice |
+| Two-finger swipe up on keypad | Stop voice |
+
+An ascending chime (C5→E5) plays when listening starts; a descending chime (E5→C5) plays when it stops. The screen stays on while listening and for 30 seconds after the last word heard.
+
+### Speaking commands
+
+RPN is naturally suited to voice — say numbers and operations in the same order you would press keys:
+
+```
+"three enter five plus"       → pushes 3, pushes 5, adds → 8
+"one seven reciprocal"        → pushes 17, computes 1/17
+"fix two"                     → sets display to FIX 2
+"store three"                 → stores X into register 3
+```
+
+A grammar constraint limits recognition to calculator vocabulary, which reduces misrecognition from background noise. Non-obvious word mappings are listed in the in-app voice help sheet (say "help" or long-press the mic key).
+
+### Model
+
+The app uses `vosk-model-small-en-us-0.15`. Place the unpacked model folder at:
+
+```
+app/src/main/assets/model-en-us/
+```
+
+The expected model name is tracked in [`app/src/main/assets/model-en-us/uuid`](app/src/main/assets/model-en-us/uuid). The binary files are excluded from the repository.
 
 ## Build
 
