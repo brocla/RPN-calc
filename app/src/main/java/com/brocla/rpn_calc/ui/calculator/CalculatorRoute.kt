@@ -31,11 +31,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -98,6 +102,29 @@ fun CalculatorRoute(
         if (modelReady != null) {
             if (voiceState is VoiceState.Listening) onMicStop() else onMicStart()
         }
+    }
+
+    // Stop listening when the app leaves the foreground; resume when it returns.
+    var resumeVoiceOnForeground by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    resumeVoiceOnForeground = voiceState is VoiceState.Listening
+                    if (resumeVoiceOnForeground) voiceController.stopListening()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (resumeVoiceOnForeground) {
+                        resumeVoiceOnForeground = false
+                        onMicStart()
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val layouts: List<LayoutDescriptor> = remember { listOf(PortraitLayout, ClassicLandscapeLayout) }
