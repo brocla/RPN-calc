@@ -329,7 +329,7 @@ fun CalculatorRoute(
                 color = MaterialTheme.colorScheme.inverseSurface,
             ) {
                 Text(
-                    text     = "Swipe down or tap 🎤 for voice",
+                    text     = "Say 'help' for voice commands",
                     color    = MaterialTheme.colorScheme.inverseOnSurface,
                     style    = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),

@@ -105,7 +105,7 @@ private val portRow8 = KeyRow(listOf(
         event        = CalcKeyEvent.ToggleMic,
         shiftedEvent = CalcKeyEvent.OpenConstants,
         customLabel  = { color, fontSize -> MicLabel(color, fontSize) },
-    )),
+    ), longPressEvent = CalcKeyEvent.OpenVoiceHelp),
 ),
 primaryTopPadding = 24.dp,  // room for the "π" shifted label on "."
 )

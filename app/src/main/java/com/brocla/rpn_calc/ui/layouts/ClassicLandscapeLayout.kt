@@ -99,7 +99,7 @@ private val row4 = KeyRow(listOf(
         event        = CalcKeyEvent.ToggleMic,
         shiftedEvent = CalcKeyEvent.OpenConstants,
         customLabel  = { color, fontSize -> MicLabel(color, fontSize) },
-    )),
+    ), longPressEvent = CalcKeyEvent.OpenVoiceHelp),
     KeySlot.Key(KeyDef("+",   "",  CalcKeyEvent.Add,      keyColor = CalcColors.KeyArith)),
 ), primaryTopPadding = 24.dp)
 
