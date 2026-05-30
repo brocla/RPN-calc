@@ -38,6 +38,7 @@ The rest of this README is AI‑generated.
 
 ## Features
 
+- **Voice input** — speak operations and numbers; on-device recognition via Vosk, grammar-constrained to calculator vocabulary
 - **RPN stack** — 4-register stack (X, Y, Z, T) with roll, swap, and last-X
 - **Display modes** — FIX, SCI, ENG, ALL with configurable decimal places
 - **Seven-segment display** — modified DSEG7Classic font with zero-width decimal and comma glyphs for correct digit alignment
@@ -49,7 +50,7 @@ The rest of this README is AI‑generated.
 - **State persistence** — stack, memory, display mode, and angle mode survive app kills and device restarts (DataStore)
 - **In-app reset** — long-press backspace to reset all state (with confirmation)
 - **Copy/paste** — long-press the display to copy X or paste a number from the clipboard
-- **Voice input** — speak operations and numbers; on-device recognition via Vosk, grammar-constrained to calculator vocabulary
+
 
 ## Architecture
 
@@ -144,3 +145,4 @@ Requirements: Android Studio Panda 4 (2025.3.4), minSdk 35 (Android 15).
 - Gradle 9.4.1 / AGP 9.2.1
 - kotlinx.serialization (state persistence)
 - DataStore Preferences (state persistence)
+- Vosk 0.3.75 (offline speech recognition)
