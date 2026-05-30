@@ -1,5 +1,7 @@
 # RPN Calculator
 
+[![Tests](https://github.com/brocla/RPN-calc/actions/workflows/test.yml/badge.svg)](https://github.com/brocla/RPN-calc/actions/workflows/test.yml)
+
 An RPN calculator for Android, styled after the HP-41C, with a smattering of 12C and 35s. Written in Kotlin with Jetpack Compose.
 
 <img src="assets/RPN_Calc.png" width="40%"/>
