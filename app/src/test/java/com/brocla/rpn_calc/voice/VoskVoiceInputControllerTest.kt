@@ -2,19 +2,15 @@
 
 package com.brocla.rpn_calc.voice
 
-import kotlinx.coroutines.Dispatchers
+import com.brocla.rpn_calc.testdoubles.MainDispatcherRule
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.vosk.Model
 
@@ -28,14 +24,11 @@ class VoskVoiceInputControllerTest {
 
     // ── Setup ─────────────────────────────────────────────────────────────────
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-
-    @Before fun setUp()    { Dispatchers.setMain(testDispatcher) }
-    @After  fun tearDown() { Dispatchers.resetMain() }
+    @get:Rule val mainDispatcherRule = MainDispatcherRule()
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private fun scope() = TestScope(testDispatcher)
+    private fun scope() = TestScope(mainDispatcherRule.dispatcher)
 
     /** Minimal VoiceModelProvider whose model StateFlow is permanently null. */
     private fun controller(): VoskVoiceInputController {
