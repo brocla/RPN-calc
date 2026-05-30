@@ -27,11 +27,9 @@ I kept STO and RCL, but there are only ten memory registers, and they work like 
 
 What surprised me most was how difficult it is to format the display. Two‑thirds of the 250 tests are for display formatting. I threw away my first attempt because there was no reliable way to know whether another bug was hiding. So I switched to a state machine.
 
-The font work was unexpected. I used one that looks like a seven‑segment display. I thought it would drop it, but I had to edit the with of the space character and had to create a comma. Curiously, the decimal point has zero width. That was new., but can't have the display getting wider because of punctuation.
+The font work was unexpected. I used a font that looks like a seven‑segment display. I thought it would drop in easily, but I had to edit the width of the space character and had to create a comma. 
 
 The math was no trouble at all. I just pointed at a math library.
-
-I’m still working on a good icon for the app.
 
 I used Claude Opus 4.6 extensively, which is why software is essentially free.
 
