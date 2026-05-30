@@ -8,13 +8,9 @@ import com.brocla.rpn_calc.logic.entry.EntryStateMachine
 import com.brocla.rpn_calc.logic.math.MathOperations
 import com.brocla.rpn_calc.logic.model.DisplayMode
 import com.brocla.rpn_calc.logic.model.EntryState
-import kotlinx.coroutines.Dispatchers
+import com.brocla.rpn_calc.testdoubles.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -27,8 +23,8 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalculatorViewModelTest {
 
-    @get:Rule
-    val tmpFolder = TemporaryFolder()
+    @get:Rule val mainDispatcherRule = MainDispatcherRule()
+    @get:Rule val tmpFolder = TemporaryFolder()
 
     private lateinit var vm: CalculatorViewModel
 
@@ -41,14 +37,8 @@ class CalculatorViewModelTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
         val engine = CalculatorEngine(EntryStateMachine(), MathOperations(), DisplayFormatter())
         vm = CalculatorViewModel(engine, testRepository(), ClipboardParserImpl())
-    }
-
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     private fun key(event: CalcKeyEvent) = vm.onKey(event)
