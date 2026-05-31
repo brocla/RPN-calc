@@ -61,8 +61,10 @@ import com.brocla.rpn_calc.voice.VoiceModelLoader
 import com.brocla.rpn_calc.voice.VoiceParser
 import com.brocla.rpn_calc.voice.VoiceState
 import com.brocla.rpn_calc.voice.collectAndDispatch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -347,9 +349,9 @@ private const val CHIME_SAMPLE_RATE = 44100
 
 private fun midiHz(note: Int): Double = 440.0 * Math.pow(2.0, (note - 69) / 12.0)
 
-/** Play two sequential notes as a chime on a daemon thread. */
-private fun chime(note1: Int, note2: Int, noteMs: Int = CHIME_NOTE_MS) {
-    kotlin.concurrent.thread(isDaemon = true) {
+/** Play two sequential notes as a chime. Suspends on Dispatchers.IO; cancellation-safe. */
+private suspend fun chime(note1: Int, note2: Int, noteMs: Int = CHIME_NOTE_MS) {
+    withContext(Dispatchers.IO) {
         val n = CHIME_SAMPLE_RATE * noteMs / 1000
         val fadeLen = (CHIME_SAMPLE_RATE * 0.018).toInt()  // 18 ms fade between notes
         val total = n * 2
@@ -385,8 +387,11 @@ private fun chime(note1: Int, note2: Int, noteMs: Int = CHIME_NOTE_MS) {
             .build()
         track.write(samples, 0, total)
         track.play()
-        Thread.sleep(noteMs.toLong() * 2 + 80)
-        track.stop()
-        track.release()
+        try {
+            delay(noteMs.toLong() * 2 + 80)
+        } finally {
+            track.stop()
+            track.release()
+        }
     }
 }
