@@ -21,3 +21,5 @@ artwork/*
 .idea/misc.xml
 logic/*.log
 *.log
+app/src/main/assets/model-en-us/*
+!app/src/main/assets/model-en-us/uuid

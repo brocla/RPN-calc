@@ -5,13 +5,10 @@ import com.brocla.rpn_calc.logic.model.CalculatorState
 import com.brocla.rpn_calc.logic.model.Stack
 import com.brocla.rpn_calc.testdoubles.FakeCalcStateRepository
 import com.brocla.rpn_calc.testdoubles.FakeCalculatorEngine
-import kotlinx.coroutines.Dispatchers
+import com.brocla.rpn_calc.testdoubles.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -31,19 +28,16 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalculatorViewModelIsolationTest {
 
+    @get:Rule val mainDispatcherRule = MainDispatcherRule()
+
     private lateinit var fakeEngine: FakeCalculatorEngine
     private lateinit var fakeRepo: FakeCalcStateRepository
     private lateinit var vm: CalculatorViewModel
 
     @Before fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
         fakeEngine = FakeCalculatorEngine()
         fakeRepo = FakeCalcStateRepository()
         vm = CalculatorViewModel(fakeEngine, fakeRepo, ClipboardParserImpl())
-    }
-
-    @After fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     private fun key(event: CalcKeyEvent) = vm.onKey(event)
@@ -192,7 +186,6 @@ class CalculatorViewModelIsolationTest {
         val savedState = CalculatorState(stack = savedStack)
         val repoWithState = FakeCalcStateRepository(initial = savedState)
 
-        Dispatchers.setMain(UnconfinedTestDispatcher())
         val vmWithSavedState = CalculatorViewModel(fakeEngine, repoWithState, ClipboardParserImpl())
 
         assertEquals(42.0, vmWithSavedState.uiState.value.calcState.stack.x,

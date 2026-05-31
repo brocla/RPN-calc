@@ -40,6 +40,10 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        unitTests.all { it.maxParallelForks = 1 }
+    }
 }
 
 dependencies {
@@ -61,9 +65,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.core.splashscreen)
+    implementation("com.alphacephei:vosk-android:0.3.75@aar")
+    implementation("net.java.dev.jna:jna:5.18.0@aar")
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

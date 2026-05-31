@@ -166,6 +166,12 @@ class CalculatorViewModel @Inject constructor(
             CalcKeyEvent.OpenLayoutPicker -> cs
             CalcKeyEvent.ResetRequest  -> cs
             CalcKeyEvent.OpenConstants -> cs  // intercepted by CalculatorRoute before reaching here
+            CalcKeyEvent.ToggleMic     -> cs  // intercepted by CalculatorRoute
+            CalcKeyEvent.StartMic      -> cs  // intercepted by CalculatorRoute
+            CalcKeyEvent.StopMic       -> cs  // intercepted by CalculatorRoute
+            CalcKeyEvent.OpenVoiceHelp -> cs  // intercepted by CalculatorRoute
+            CalcKeyEvent.CopyRequest   -> cs  // intercepted by CalculatorRoute
+            CalcKeyEvent.PasteClipboard -> cs // intercepted by CalculatorRoute
             is CalcKeyEvent.PasteValue -> {
                 val entered = engine.pressEnter(cs)
                 entered.copy(

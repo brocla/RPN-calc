@@ -3,13 +3,10 @@ package com.brocla.rpn_calc.ui.calculator
 import com.brocla.rpn_calc.testdoubles.FakeCalcStateRepository
 import com.brocla.rpn_calc.testdoubles.FakeCalculatorEngine
 import com.brocla.rpn_calc.testdoubles.FakeClipboardParser
-import kotlinx.coroutines.Dispatchers
+import com.brocla.rpn_calc.testdoubles.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -26,21 +23,18 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalculatorViewModelClipboardTest {
 
+    @get:Rule val mainDispatcherRule = MainDispatcherRule()
+
     private lateinit var fakeParser: FakeClipboardParser
     private lateinit var fakeEngine: FakeCalculatorEngine
     private lateinit var fakeRepo: FakeCalcStateRepository
     private lateinit var vm: CalculatorViewModel
 
     @Before fun setUp() {
-        Dispatchers.setMain(UnconfinedTestDispatcher())
         fakeParser = FakeClipboardParser()
         fakeEngine = FakeCalculatorEngine()
         fakeRepo = FakeCalcStateRepository()
         vm = CalculatorViewModel(fakeEngine, fakeRepo, fakeParser)
-    }
-
-    @After fun tearDown() {
-        Dispatchers.resetMain()
     }
 
     private val cs get() = vm.uiState.value.calcState
