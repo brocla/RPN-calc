@@ -7,11 +7,15 @@ An RPN calculator for Android, styled after the HP-41C, with a smattering of 12C
 <img src="assets/RPN_Calc.png" width="40%"/>
 
 ## Why
-The world does not need another calculator app. But I’m particular about calculators, and I was unhappy with what I could find on Google Play. Since software is essentially free now, I decided to make my own personal calculator, exactly the way I like it. It isn’t meant for anyone else. Every design choice reflects what I want. Very me‑centric.
+The world does not need another calculator app. But I’m particular about calculators, and I was unhappy with what I could find for my phone. Since software is essentially free now, I decided to make my own personal calculator, exactly the way I like it. It wasn’t meant for anyone else, but it turned out that the Voice Input feature makes it ideal for people with hand tremors or other hand mobility issues. Sometimes, things work out like that.
 
-The layout is similar to the HP‑41C, my favorite calculator, even if it’s not my everyday choice. I threw out all the programming features; if I need to write code, it won’t be on a calculator. It’s RPN because the neurons that do quick calculations were trained in the ’80s, when RPN was what I used. I put two layers of the stack on the screen because it helps to see both inputs to binary operations, but showing all four would just clutter.
+The layout is similar to the HP‑41C, my favorite calculator, even if it’s not my everyday choice. I threw out all the programming features; if I need to write code, it won’t be on a calculator. It’s RPN because the neurons that do quick calculations were trained in the ’80s, when RPN was what I used. I put two levels of the stack on the screen because it helps to see both inputs to binary operations, but showing all four would just clutter.
 
-Some possibilities opened up simply because this is an Android app. I added a swipe‑up gesture for ENTER. It’s my favorite new feature. it feels natural after only a few minutes, and it’s fast.
+Some possibilities opened up simply because this is an Android app. I added a swipe‑up gesture for ENTER. After a few tries, it becomes easier and quicker than clicking the ENTER key.
+
+And I added Voice Input because I could. It has turned out to be the best thing about the app. That was a surprise to me. There is a microphone button to turn it on, but having to use a button to get to Voice mode seemed like a barrier to use. So Voice is also enabled by a two-finger swipe down. Perhaps I'll make a version where Voice is default ON. 
+
+Other design decisions:
 
 Copy/Paste. Just long press the display. Easy
 
@@ -30,6 +34,9 @@ What surprised me most was how difficult it is to format the display. Two‑thir
 The font work was unexpected. I used a font that looks like a seven‑segment display. I thought it would drop in easily, but I had to edit the width of the space character and had to create a comma. 
 
 The math was no trouble at all. I just pointed at a math library.
+
+Another word about Voice Input. The native Speech-to-Text capability on Android wasn't a good fit. The android.speech.SpeechRecognizer does batch recognition and accesses the Google servers.  The app really needs streaming recognition and an on-device model. I got that from VOSK, an open source library. I improved the recognition by providing a list of the allowed words. There are only ~40. There were some irritating homophones like 'sign' and 'sine'. And some functions that sound like numbers, 10^x. But that got figured out. 'Help' is a keyword. It brings up a list of all the words in the grammar and what they do.
+
 
 I used Claude Opus 4.6 extensively, which is why software is essentially free.
 
@@ -145,4 +152,6 @@ Requirements: Android Studio Panda 4 (2025.3.4), minSdk 35 (Android 15).
 - Gradle 9.4.1 / AGP 9.2.1
 - kotlinx.serialization (state persistence)
 - DataStore Preferences (state persistence)
-- Vosk 0.3.75 (offline speech recognition)
+- Vosk after 0.3.75 (offline speech recognition)
+
+vosk-android 0.3.75 is used **with a local workaround** `(SpeechServiceExt.kt)` because `SpeechService.getAudioSessionId()` was not yet released when this was written. It was merged in [alphacep/vosk-api@e81a422](https://github.com/alphacep/vosk-api/commit/e81a422) (PR #2042). Once a version **after 0.3.75** is published to Maven Central that includes that commit, remove `SpeechServiceExt.kt` and replace `it.audioSessionId()` calls with `it.audioSessionId` in `VoskVoiceInputController.kt`.
