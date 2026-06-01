@@ -31,7 +31,7 @@ I kept STO and RCL, but there are only ten memory registers, and they work like 
 
 What surprised me most was how difficult it is to format the display. Two‑thirds of the 250 tests are for display formatting. I threw away my first attempt because there was no reliable way to know whether another bug was hiding. So I switched to a state machine.
 
-The font work was unexpected. I used a font that looks like a seven‑segment display. I thought it would drop in easily, but I had to edit the width of the space character and had to create a comma. 
+The font work was unexpected. I used a font that looks like a seven‑segment display to give it a calculator look. I thought it would drop in easily, but I had to learn how to edit fonts to set the width of the space character and to create a comma character. 
 
 The math was no trouble at all. I just pointed at a math library.
 
