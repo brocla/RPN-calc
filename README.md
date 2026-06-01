@@ -15,9 +15,9 @@ Some possibilities opened up simply because this is an Android app. I added a sw
 
 And I added Voice Input because I could. It has turned out to be the best thing about the app. That was a surprise to me. There is a microphone button to turn it on, but having to use a button to get to Voice mode seemed like a barrier to use. So Voice is also enabled by a two-finger swipe down. Perhaps I'll make a version where Voice is default ON. 
 
-Other design decisions:
+### Other design decisions:
 
-Copy/Paste. Just long press the display. Easy
+Copy/Paste. Just long-press the display. Easy
 
 The display transitions are animated, just because I could. ENTER moves the stack up. Roll‑down is down. Swap is just fun to watch.
 
