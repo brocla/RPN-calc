@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/brocla/RPN-calc/actions/workflows/test.yml/badge.svg)](https://github.com/brocla/RPN-calc/actions/workflows/test.yml)
 
-An RPN calculator for Android, styled after the HP-41C, with a smattering of 12C and 35s. Written in Kotlin with Jetpack Compose.
+An RPN calculator for Android, with Voice Input, styled after the HP-41C, with a smattering of 12C and 35s. Written in Kotlin with Jetpack Compose.
 
 <img src="assets/RPN_Calc.png" width="40%"/>
 
@@ -15,9 +15,9 @@ Some possibilities opened up simply because this is an Android app. I added a sw
 
 And I added Voice Input because I could. It has turned out to be the best thing about the app. That was a surprise to me. There is a microphone button to turn it on, but having to use a button to get to Voice mode seemed like a barrier to use. So Voice is also enabled by a two-finger swipe down. Perhaps I'll make a version where Voice is default ON. 
 
-Other design decisions:
+### Other design decisions:
 
-Copy/Paste. Just long press the display. Easy
+Copy/Paste. Just long-press the display. Easy
 
 The display transitions are animated, just because I could. ENTER moves the stack up. Roll‑down is down. Swap is just fun to watch.
 
@@ -31,7 +31,7 @@ I kept STO and RCL, but there are only ten memory registers, and they work like 
 
 What surprised me most was how difficult it is to format the display. Two‑thirds of the 250 tests are for display formatting. I threw away my first attempt because there was no reliable way to know whether another bug was hiding. So I switched to a state machine.
 
-The font work was unexpected. I used a font that looks like a seven‑segment display. I thought it would drop in easily, but I had to edit the width of the space character and had to create a comma. 
+The font work was unexpected. I used a font that looks like a seven‑segment display to give it a calculator look. I thought it would drop in easily, but I had to learn how to edit fonts to set the width of the space character and to create a comma character. 
 
 The math was no trouble at all. I just pointed at a math library.
 
