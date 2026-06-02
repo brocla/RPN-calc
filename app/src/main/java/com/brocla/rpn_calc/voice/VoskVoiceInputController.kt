@@ -40,6 +40,10 @@ class VoskVoiceInputController @Inject constructor(
     private var speechService: SpeechService? = null
     private var noiseSuppressor: NoiseSuppressor? = null
 
+    // True once a non-empty partial result has arrived in the current segment.
+    // Guards onResult against firing on silence-triggered forced grammar matches.
+    @Volatile private var segmentHadSpeech = false
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     override fun startListening() {
@@ -70,6 +74,7 @@ class VoskVoiceInputController @Inject constructor(
         noiseSuppressor?.release()
         noiseSuppressor = null
         audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
+        segmentHadSpeech   = false
         _state.value       = VoiceState.Idle
         _interimText.value = ""
     }
@@ -85,15 +90,22 @@ class VoskVoiceInputController @Inject constructor(
 
         override fun onPartialResult(hypothesis: String) {
             val partial = parseText(hypothesis, "partial")
-            if (partial.isNotEmpty()) _interimText.value = partial
+            if (partial.isNotEmpty()) {
+                segmentHadSpeech = true
+                _interimText.value = partial
+            }
         }
 
         override fun onResult(hypothesis: String) {
-            val text = extractBestResult(hypothesis)
-            if (text.isNotEmpty() && text != "[unk]") {
+            val (text, confidence) = extractBestResult(hypothesis)
+            if (text.isNotEmpty() && text != "[unk]"
+                && segmentHadSpeech
+                && confidence >= MIN_CONFIDENCE
+            ) {
                 _interimText.value = "▶ $text"
                 scope.launch { _finalUtterance.emit(text) }
             }
+            segmentHadSpeech = false
         }
 
         override fun onFinalResult(hypothesis: String) = onResult(hypothesis)
@@ -106,6 +118,7 @@ class VoskVoiceInputController @Inject constructor(
             noiseSuppressor?.release()
             noiseSuppressor = null
             audioMode.setMode(android.media.AudioManager.MODE_NORMAL)
+            segmentHadSpeech = false
             _state.value = VoiceState.Error(VoiceError.Unknown)
         }
 
@@ -117,20 +130,23 @@ class VoskVoiceInputController @Inject constructor(
     private fun parseText(hypothesis: String, key: String): String =
         runCatching { JSONObject(hypothesis).optString(key) }.getOrDefault("")
 
-    private fun extractBestResult(hypothesis: String): String {
-        val json = runCatching { JSONObject(hypothesis) }.getOrNull() ?: return ""
+    private fun extractBestResult(hypothesis: String): Pair<String, Double> {
+        val json = runCatching { JSONObject(hypothesis) }.getOrNull() ?: return "" to 0.0
         val alternatives = json.optJSONArray("alternatives")
         if (alternatives != null && alternatives.length() > 0) {
-            return alternatives.getJSONObject(0).optString("text")
+            val alt = alternatives.getJSONObject(0)
+            return alt.optString("text") to alt.optDouble("confidence", 1.0)
         }
-        return json.optString("text")
+        // Plain {"text":"..."} result has no confidence field — treat as fully confident.
+        return json.optString("text") to 1.0
     }
 
     // ── Constants ─────────────────────────────────────────────────────────────
 
     companion object {
-        private const val TAG         = "VoskVoiceController"
-        private const val SAMPLE_RATE = 16000.0f
+        private const val TAG             = "VoskVoiceController"
+        private const val SAMPLE_RATE     = 16000.0f
+        private const val MIN_CONFIDENCE  = 0.5
 
         val GRAMMAR = """
             ["zero","one","two","to","too","three","four","five","six","seven","eight","nine","oh",

@@ -76,6 +76,7 @@ class VoskVoiceInputControllerTest {
         val received = mutableListOf<String>()
         val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
 
+        ctrl.recognitionListener.onPartialResult("""{"partial":"five enter"}""")
         ctrl.recognitionListener.onResult("""{"text":"five enter"}""")
         job.cancel()
 
@@ -84,6 +85,7 @@ class VoskVoiceInputControllerTest {
 
     @Test fun final_result_text_sets_interimText_display() = scope().runTest {
         val ctrl = controller()
+        ctrl.recognitionListener.onPartialResult("""{"partial":"plus"}""")
         ctrl.recognitionListener.onResult("""{"text":"plus"}""")
         assertEquals("▶ plus", ctrl.interimText.value)
     }
@@ -117,8 +119,9 @@ class VoskVoiceInputControllerTest {
         val received = mutableListOf<String>()
         val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
 
+        ctrl.recognitionListener.onPartialResult("""{"partial":"divide"}""")
         ctrl.recognitionListener.onResult(
-            """{"alternatives":[{"text":"divide"},{"text":"vibe"},{"text":"die"}]}"""
+            """{"alternatives":[{"text":"divide","confidence":0.9},{"text":"vibe"},{"text":"die"}]}"""
         )
         job.cancel()
 
@@ -130,9 +133,10 @@ class VoskVoiceInputControllerTest {
         val received = mutableListOf<String>()
         val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
 
+        ctrl.recognitionListener.onPartialResult("""{"partial":"preferred"}""")
         // If both keys present, alternatives wins
         ctrl.recognitionListener.onResult(
-            """{"text":"fallback","alternatives":[{"text":"preferred"}]}"""
+            """{"text":"fallback","alternatives":[{"text":"preferred","confidence":0.9}]}"""
         )
         job.cancel()
 
@@ -157,6 +161,7 @@ class VoskVoiceInputControllerTest {
         val received = mutableListOf<String>()
         val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
 
+        ctrl.recognitionListener.onPartialResult("""{"partial":"enter"}""")
         ctrl.recognitionListener.onFinalResult("""{"text":"enter"}""")
         job.cancel()
 
@@ -197,6 +202,50 @@ class VoskVoiceInputControllerTest {
         ctrl.recognitionListener.onError(RuntimeException("err"))
         ctrl.stopListening()
         assertEquals(VoiceState.Idle, ctrl.state.value)
+    }
+
+    // ── Silence / false-positive suppression ─────────────────────────────────
+
+    @Test fun result_without_prior_partial_is_suppressed() = scope().runTest {
+        val ctrl = controller()
+        val received = mutableListOf<String>()
+        val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
+
+        // No onPartialResult call — simulates silence-triggered VAD endpoint
+        ctrl.recognitionListener.onResult("""{"text":"help"}""")
+        job.cancel()
+
+        assertTrue("Expected no emission when no prior partial", received.isEmpty())
+    }
+
+    @Test fun result_with_low_confidence_is_suppressed() = scope().runTest {
+        val ctrl = controller()
+        val received = mutableListOf<String>()
+        val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
+
+        ctrl.recognitionListener.onPartialResult("""{"partial":"help"}""")
+        ctrl.recognitionListener.onResult(
+            """{"alternatives":[{"text":"help","confidence":0.1}]}"""
+        )
+        job.cancel()
+
+        assertTrue("Expected no emission below MIN_CONFIDENCE", received.isEmpty())
+    }
+
+    @Test fun segment_flag_resets_between_segments() = scope().runTest {
+        val ctrl = controller()
+        val received = mutableListOf<String>()
+        val job = launch { ctrl.finalUtterance.collect { received.add(it) } }
+
+        // First segment: valid speech
+        ctrl.recognitionListener.onPartialResult("""{"partial":"plus"}""")
+        ctrl.recognitionListener.onResult("""{"text":"plus"}""")
+
+        // Second segment: silence (no partial) — must be suppressed even though first was valid
+        ctrl.recognitionListener.onResult("""{"text":"help"}""")
+        job.cancel()
+
+        assertEquals(listOf("plus"), received)
     }
 
     // ── Grammar completeness ──────────────────────────────────────────────────
