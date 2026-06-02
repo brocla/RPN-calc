@@ -40,6 +40,12 @@ class DigitSequenceParserTest {
     @Test fun magnitude_billions() =
         assertEquals(listOf(2, 0, 0, 0, 0, 0, 0, 0, 0, 0), parser.parse(listOf("two", "billion")))
 
+    @Test fun magnitude_trillions() =
+        assertEquals(listOf(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), parser.parse(listOf("one", "trillion")))
+
+    @Test fun magnitude_nine_hundred_billion() =
+        assertEquals(listOf(9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), parser.parse(listOf("nine", "hundred", "billion")))
+
     @Test fun colloquial_mixed() =
         assertEquals(listOf(3, 2, 5), parser.parse(listOf("three", "twenty", "five")))
 

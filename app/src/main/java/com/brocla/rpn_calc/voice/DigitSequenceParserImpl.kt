@@ -24,7 +24,8 @@ class DigitSequenceParserImpl @Inject constructor() : DigitSequenceParser {
                 "hundred"  -> current *= 100
                 "thousand" -> { result += current * 1_000L;         current = 0 }
                 "million"  -> { result += current * 1_000_000L;     current = 0 }
-                "billion"  -> { result += current * 1_000_000_000L; current = 0 }
+                "billion"  -> { result += current * 1_000_000_000L;     current = 0 }
+                "trillion" -> { result += current * 1_000_000_000_000L; current = 0 }
                 else       -> current += magnitudeValue(token)
             }
         }
@@ -107,6 +108,6 @@ class DigitSequenceParserImpl @Inject constructor() : DigitSequenceParser {
             "sixty" to 6, "seventy" to 7, "eighty" to 8, "ninety" to 9,
         )
 
-        val MAGNITUDE_WORDS = setOf("hundred", "thousand", "million", "billion")
+        val MAGNITUDE_WORDS = setOf("hundred", "thousand", "million", "billion", "trillion")
     }
 }

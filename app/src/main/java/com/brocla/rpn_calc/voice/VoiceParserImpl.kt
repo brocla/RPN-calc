@@ -20,7 +20,12 @@ class VoiceParserImpl @Inject constructor(
 
         fun flushPreDecimal() {
             if (pending.isNotEmpty()) {
-                numberParser.parse(pending.toList()).forEach { events.add(CalcKeyEvent.Digit(it)) }
+                val digits = numberParser.parse(pending.toList())
+                if (digits.size > MAX_DISPLAY_DIGITS) {
+                    emitAsScientific(digits, events)
+                } else {
+                    digits.forEach { events.add(CalcKeyEvent.Digit(it)) }
+                }
                 pending.clear()
             }
         }
@@ -138,6 +143,20 @@ class VoiceParserImpl @Inject constructor(
         }
 
         return events
+    }
+
+    // ── Large-number helpers ─────────────────────────────────────────────────
+
+    private fun emitAsScientific(digits: List<Int>, events: MutableList<CalcKeyEvent>) {
+        val significant = digits.dropLastWhile { it == 0 }.ifEmpty { listOf(0) }
+        val exponent = digits.size - 1
+        events.add(CalcKeyEvent.Digit(significant[0]))
+        if (significant.size > 1) {
+            events.add(CalcKeyEvent.Decimal)
+            significant.drop(1).forEach { events.add(CalcKeyEvent.Digit(it)) }
+        }
+        events.add(CalcKeyEvent.Eex)
+        exponent.toString().forEach { events.add(CalcKeyEvent.Digit(it.digitToInt())) }
     }
 
     // ── Fuzzy matching ───────────────────────────────────────────────────────
@@ -273,5 +292,6 @@ class VoiceParserImpl @Inject constructor(
             SINGLE_WORD_OPS.entries.map { it.key to it.value }
 
         private val WHITESPACE = Regex("\\s+")
+        private const val MAX_DISPLAY_DIGITS = 10
     }
 }

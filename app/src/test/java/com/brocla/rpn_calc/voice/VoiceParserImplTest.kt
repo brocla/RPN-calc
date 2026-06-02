@@ -249,4 +249,34 @@ class VoiceParserImplTest {
             p.parse("fix 2")
         )
     }
+
+    // Large numbers — uses real DigitSequenceParserImpl because the fake always returns its
+    // fixed stub list and cannot exercise the > 10 digit path end-to-end.
+
+    @Test fun nine_hundred_billion_emits_scientific_notation() {
+        // 900_000_000_000 = 9 × 10^11 → 9 EEX 1 1
+        val p = VoiceParserImpl(DigitSequenceParserImpl())
+        assertEquals(
+            listOf(
+                CalcKeyEvent.Digit(9),
+                CalcKeyEvent.Eex,
+                CalcKeyEvent.Digit(1), CalcKeyEvent.Digit(1),
+            ),
+            p.parse("nine hundred billion")
+        )
+    }
+
+    @Test fun one_trillion_emits_scientific_notation() {
+        // 1_000_000_000_000 = 1 × 10^12 → 1 EEX 1 2
+        val p = VoiceParserImpl(DigitSequenceParserImpl())
+        assertEquals(
+            listOf(
+                CalcKeyEvent.Digit(1),
+                CalcKeyEvent.Eex,
+                CalcKeyEvent.Digit(1), CalcKeyEvent.Digit(2),
+            ),
+            p.parse("one trillion")
+        )
+    }
+
 }
